@@ -365,7 +365,6 @@ export default function Game({
 
       {/* Your Hand */}
       <div className="your-hand">
-        <h3>Your Hand</h3>
         <div className="hand-cards">
           {privateState.cards.map((card, i) => {
             const revealed = isRevealed(i);
