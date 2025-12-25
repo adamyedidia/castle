@@ -1349,11 +1349,11 @@ body {
   }
 
   .player-cards .card .rank {
-    font-size: 1rem;
+    font-size: 0.8rem;
   }
 
   .player-cards .card.rank-two-digit .rank {
-    font-size: 0.8rem;
+    font-size: 0.64rem;
   }
 
   .turn-badge {

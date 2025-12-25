@@ -308,15 +308,25 @@ export default function Game({
       </div>
 
       {/* Challenger's Card (when being challenged) */}
-      {amBeingChallenged && gameState.duel.challengerCardBack && (
-        <div className="challenge-card-display">
-          <p>{gameState.duel.challengerName}'s card:</p>
-          <div className="challenge-card-with-info">
-            <PublicCard back={gameState.duel.challengerCardBack} />
-            <CardPublicInfo info={gameState.duel.challengerCardPublicInfo} />
+      {amBeingChallenged && gameState.duel.challengerCardBack && (() => {
+        const challengerId = gameState.duel.challengerId;
+        const challengerCardIndex = gameState.duel.challengerCardIndex;
+        const privatelyKnownCard = privateState?.privatelyKnownCards?.[challengerId]?.[challengerCardIndex];
+
+        return (
+          <div className="challenge-card-display">
+            <p>{gameState.duel.challengerName}'s card:</p>
+            <div className="challenge-card-with-info">
+              {privatelyKnownCard ? (
+                <Card card={privatelyKnownCard} revealed={true} privateKnowledge />
+              ) : (
+                <PublicCard back={gameState.duel.challengerCardBack} />
+              )}
+              {!privatelyKnownCard && <CardPublicInfo info={gameState.duel.challengerCardPublicInfo} />}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Other Players */}
       <div className="other-players">

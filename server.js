@@ -337,6 +337,7 @@ function getPublicState() {
     duelPublic = {
       challengerId: gameState.duel.challengerId,
       challengerName: challenger?.name,
+      challengerCardIndex: gameState.duel.challengerCardIndex,
       defenderId: gameState.duel.defenderId,
       defenderName: gameState.players[gameState.duel.defenderId]?.name,
       // Show the back of the challenger's card to the defender
