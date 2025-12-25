@@ -1,6 +1,60 @@
 import React, { useState } from 'react';
 import Card from './Card';
 
+// Rank order for comparison (higher index = higher rank)
+const RANK_ORDER = ['joker', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+
+function getRankValue(rank) {
+  return RANK_ORDER.indexOf(rank);
+}
+
+// Get the highest rank from an array of ranks
+function getHighestRank(ranks) {
+  if (!ranks || ranks.length === 0) return null;
+  return ranks.reduce((highest, rank) => {
+    return getRankValue(rank) > getRankValue(highest) ? rank : highest;
+  }, ranks[0]);
+}
+
+// Component to display public info markers beneath a card
+function CardPublicInfo({ info }) {
+  if (!info) return null;
+
+  const markers = [];
+
+  // If beat a non-face card, this card is NOT a joker
+  if (info.notJoker) {
+    markers.push(
+      <span key="notJoker" className="public-info-marker not-joker">
+        <s>Joker</s>
+      </span>
+    );
+  }
+
+  // If beat a joker, this card is J, Q, K, or A
+  if (info.defeatedJoker) {
+    markers.push(
+      <span key="defeatedJoker" className="public-info-marker defeated-joker">
+        &lt;J
+      </span>
+    );
+  }
+
+  // Show highest defeated rank
+  if (info.defeatedRanks && info.defeatedRanks.length > 0) {
+    const highestRank = getHighestRank(info.defeatedRanks);
+    markers.push(
+      <span key="highestRank" className="public-info-marker higher-than">
+        &gt;{highestRank}
+      </span>
+    );
+  }
+
+  if (markers.length === 0) return null;
+
+  return <div className="card-public-info">{markers}</div>;
+}
+
 // Public card representation - shows card back and future hints
 function PublicCard({ back, small }) {
   return (
@@ -285,6 +339,7 @@ export default function Game({
                   {player.cardBacks.map((back, i) => {
                     const revealedData = player.revealedCardsData?.find(r => r.index === i);
                     const isCardRevealed = !!revealedData;
+                    const publicInfo = !isCardRevealed ? player.cardPublicInfo?.[i] : null;
 
                     return (
                       <div key={i} className="card-slot">
@@ -294,6 +349,7 @@ export default function Game({
                           revealed={isCardRevealed}
                           small
                         />
+                        {!isCardRevealed && <CardPublicInfo info={publicInfo} />}
                       </div>
                     );
                   })}
@@ -316,6 +372,7 @@ export default function Game({
             const isSelected = selectedCardIndex === i;
             const canSelect = !revealed && isMyTurn && !duelInProgress;
             const canRespond = !revealed && amBeingChallenged;
+            const publicInfo = !revealed ? myPlayer?.cardPublicInfo?.[i] : null;
 
             return (
               <div
@@ -329,6 +386,7 @@ export default function Game({
                   isSubmitted={isSelected}
                   disabled={revealed}
                 />
+                {!revealed && <CardPublicInfo info={publicInfo} />}
                 {revealed ? (
                   <div className="card-status revealed-status">Revealed</div>
                 ) : amBeingChallenged ? (

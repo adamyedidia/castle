@@ -323,6 +323,7 @@ function getPublicState() {
       revealedCards: player.revealedCards || [],
       revealedCardsData: revealedCardsData,
       cardBacks: player.cards ? player.cards.map(c => c.back) : [],
+      cardPublicInfo: player.cardPublicInfo || [],
       connected: !!player.socketId,
       canBeChallenged: player.cards ? canBeChallenged(player) : false,
       unrevealedCount: player.cards ? getUnrevealedCardIndices(player).length : 0
@@ -455,6 +456,12 @@ io.on('connection', (socket) => {
     for (const playerId of playerIds) {
       gameState.players[playerId].cards = hands[playerId];
       gameState.players[playerId].revealedCards = [];
+      // Initialize public info for each card (tracks what info is publicly known about each card)
+      gameState.players[playerId].cardPublicInfo = hands[playerId].map(() => ({
+        defeatedRanks: [],    // Ranks this card has beaten (means this card is > those ranks)
+        defeatedJoker: false, // If true, this card beat a joker (means it's J, Q, K, or A)
+        notJoker: false       // If true, this card beat a non-face card (means it's NOT a joker)
+      }));
     }
 
     // Set up turn order (randomized)
@@ -572,15 +579,51 @@ io.on('connection', (socket) => {
       result
     };
 
+    // Track public info for the winning card
+    const faceCards = ['J', 'Q', 'K', 'A'];
+
     if (result === 'player1') {
+      // Challenger (card1) won, update card1's public info
+      const info = challenger.cardPublicInfo[duel.challengerCardIndex];
+      if (card2.rank === 'joker') {
+        // Beat a joker means this card is J, Q, K, or A
+        info.defeatedJoker = true;
+      } else {
+        // Beat a non-joker, record the rank
+        if (!info.defeatedRanks.includes(card2.rank)) {
+          info.defeatedRanks.push(card2.rank);
+        }
+        // If we beat a non-face card, we can't be a joker
+        if (!faceCards.includes(card2.rank)) {
+          info.notJoker = true;
+        }
+      }
+
       defender.revealedCards.push(duel.defenderCardIndex);
       duelResult.loser = duel.defenderId;
       duelResult.revealedCard = card2;
     } else if (result === 'player2') {
+      // Defender (card2) won, update card2's public info
+      const info = defender.cardPublicInfo[duel.defenderCardIndex];
+      if (card1.rank === 'joker') {
+        // Beat a joker means this card is J, Q, K, or A
+        info.defeatedJoker = true;
+      } else {
+        // Beat a non-joker, record the rank
+        if (!info.defeatedRanks.includes(card1.rank)) {
+          info.defeatedRanks.push(card1.rank);
+        }
+        // If we beat a non-face card, we can't be a joker
+        if (!faceCards.includes(card1.rank)) {
+          info.notJoker = true;
+        }
+      }
+
       challenger.revealedCards.push(duel.challengerCardIndex);
       duelResult.loser = duel.challengerId;
       duelResult.revealedCard = card1;
     }
+    // Note: ties don't reveal any info
 
     io.emit('duelResult', duelResult);
 
