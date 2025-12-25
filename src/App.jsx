@@ -110,6 +110,10 @@ export default function App() {
     socket.emit('respondToChallenge', cardIndex);
   };
 
+  const callLeaders = (leaderIds) => {
+    socket.emit('callLeaders', leaderIds);
+  };
+
   const kickPlayer = (targetPlayerId) => {
     socket.emit('kickPlayer', targetPlayerId);
   };
@@ -139,6 +143,7 @@ export default function App() {
       playerName={playerName}
       onChallenge={challenge}
       onRespondToChallenge={respondToChallenge}
+      onCallLeaders={callLeaders}
       onEndGame={endGame}
       duelResult={duelResult}
     />

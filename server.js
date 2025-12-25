@@ -13,11 +13,12 @@ const io = new Server(server, {
 
 // Game state
 let gameState = {
-  phase: 'lobby', // 'lobby' or 'playing'
+  phase: 'lobby', // 'lobby', 'playing', or 'finished'
   players: {},    // playerId -> { name, cards, revealedCards, socketId }
   turnOrder: [],  // Array of player IDs in turn order
   currentTurnIndex: 0,
-  duel: null      // null or { challengerId, challengerCardIndex, defenderId, defenderCardIndex }
+  duel: null,     // null or { challengerId, challengerCardIndex, defenderId, defenderCardIndex }
+  gameResult: null // null or { callerId, guessedLeaders, actualLeaders, correct, winningTeam, losingTeam }
 };
 
 // Map socket IDs to player IDs
@@ -107,6 +108,41 @@ function getSoulCard(cards) {
 function getTeam(cards) {
   const soulCard = getSoulCard(cards);
   return soulCard.color;
+}
+
+// Get the actual team leaders
+function getTeamLeaders() {
+  const teams = { red: [], black: [] };
+
+  // Group players by team with their soul card info
+  for (const [playerId, player] of Object.entries(gameState.players)) {
+    if (!player.cards || player.cards.length === 0) continue;
+
+    const soulCard = getSoulCard(player.cards);
+    const team = soulCard.color;
+    teams[team].push({
+      playerId,
+      soulCard,
+      soulRank: getRankValue(soulCard.rank)
+    });
+  }
+
+  const leaders = [];
+
+  // Find leader for each team (highest soul card rank)
+  for (const team of ['red', 'black']) {
+    if (teams[team].length > 0) {
+      const sorted = teams[team].sort((a, b) => b.soulRank - a.soulRank);
+      leaders.push(sorted[0].playerId);
+    }
+  }
+
+  return {
+    leaders: leaders.sort(), // Sort for consistent comparison
+    redTeam: teams.red.map(p => p.playerId),
+    blackTeam: teams.black.map(p => p.playerId),
+    singleTeam: teams.red.length === 0 || teams.black.length === 0
+  };
 }
 
 function resolveDuel(card1, card2) {
@@ -231,7 +267,8 @@ function getPublicState() {
     players,
     turnOrder: gameState.turnOrder,
     currentTurnPlayerId: getCurrentTurnPlayerId(),
-    duel: duelPublic
+    duel: duelPublic,
+    gameResult: gameState.gameResult
   };
 }
 
@@ -451,6 +488,83 @@ io.on('connection', (socket) => {
     broadcastState();
   }
 
+  // Call the team leaders
+  socket.on('callLeaders', (guessedLeaderIds) => {
+    const callerId = getPlayerId(socket);
+    const caller = gameState.players[callerId];
+
+    if (!caller || gameState.phase !== 'playing') {
+      socket.emit('error', 'Cannot call leaders now');
+      return;
+    }
+
+    // Get actual leaders
+    const { leaders: actualLeaders, redTeam, blackTeam, singleTeam } = getTeamLeaders();
+
+    // Normalize guessed leaders for comparison
+    const guessedSorted = [...guessedLeaderIds].sort();
+    const actualSorted = [...actualLeaders].sort();
+
+    // Check if guess is correct
+    const correct = guessedSorted.length === actualSorted.length &&
+      guessedSorted.every((id, i) => id === actualSorted[i]);
+
+    // Determine caller's team
+    const callerTeam = getTeam(caller.cards);
+
+    // Determine winning and losing teams
+    let winningPlayerIds, losingPlayerIds;
+
+    if (singleTeam) {
+      // All players on same team
+      if (correct) {
+        // Everyone wins
+        winningPlayerIds = Object.keys(gameState.players);
+        losingPlayerIds = [];
+      } else {
+        // Everyone loses
+        winningPlayerIds = [];
+        losingPlayerIds = Object.keys(gameState.players);
+      }
+    } else {
+      if (correct) {
+        // Caller's team wins
+        winningPlayerIds = callerTeam === 'red' ? redTeam : blackTeam;
+        losingPlayerIds = callerTeam === 'red' ? blackTeam : redTeam;
+      } else {
+        // Caller's team loses
+        winningPlayerIds = callerTeam === 'red' ? blackTeam : redTeam;
+        losingPlayerIds = callerTeam === 'red' ? redTeam : blackTeam;
+      }
+    }
+
+    // Store game result
+    gameState.gameResult = {
+      callerId,
+      callerName: caller.name,
+      guessedLeaders: guessedLeaderIds.map(id => ({
+        id,
+        name: gameState.players[id]?.name
+      })),
+      actualLeaders: actualLeaders.map(id => ({
+        id,
+        name: gameState.players[id]?.name
+      })),
+      correct,
+      winningPlayerIds,
+      losingPlayerIds,
+      singleTeam
+    };
+
+    gameState.phase = 'finished';
+
+    console.log(`${caller.name} called leaders: ${guessedLeaderIds.map(id => gameState.players[id]?.name).join(', ')}`);
+    console.log(`Actual leaders: ${actualLeaders.map(id => gameState.players[id]?.name).join(', ')}`);
+    console.log(`Result: ${correct ? 'CORRECT' : 'WRONG'}`);
+
+    broadcastState();
+  });
+
   socket.on('endGame', () => {
     gameState.phase = 'lobby';
     for (const player of Object.values(gameState.players)) {
@@ -460,6 +574,7 @@ io.on('connection', (socket) => {
     gameState.turnOrder = [];
     gameState.currentTurnIndex = 0;
     gameState.duel = null;
+    gameState.gameResult = null;
 
     io.emit('gameState', getPublicState());
     console.log('Game ended, returning to lobby');

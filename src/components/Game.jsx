@@ -19,48 +19,47 @@ export default function Game({
   playerName,
   onChallenge,
   onRespondToChallenge,
+  onCallLeaders,
   onEndGame,
   duelResult
 }) {
   const [selectedCardIndex, setSelectedCardIndex] = useState(null);
   const [selectedOpponentId, setSelectedOpponentId] = useState(null);
+  const [showCallLeaders, setShowCallLeaders] = useState(false);
+  const [selectedLeaders, setSelectedLeaders] = useState([]);
 
   const myPlayer = gameState.players[playerId];
   const otherPlayers = Object.entries(gameState.players)
     .filter(([id]) => id !== playerId);
+  const allPlayers = Object.entries(gameState.players);
 
   const isMyTurn = gameState.currentTurnPlayerId === playerId;
   const currentTurnPlayer = gameState.players[gameState.currentTurnPlayerId];
 
-  // Am I being challenged?
   const amBeingChallenged = gameState.duel &&
     gameState.duel.defenderId === playerId &&
     gameState.duel.waitingForDefender;
 
-  // Is there an active duel?
   const duelInProgress = !!gameState.duel;
+  const gameFinished = gameState.phase === 'finished';
+  const gameResult = gameState.gameResult;
 
-  // Get unrevealed card indices
   const unrevealedIndices = privateState.unrevealedCardIndices || [];
 
-  // Check if a card is revealed
   const isRevealed = (index) => {
     return myPlayer?.revealedCards?.includes(index);
   };
 
-  // Handle selecting a card for challenge
   const handleSelectCard = (index) => {
     if (isRevealed(index)) return;
     setSelectedCardIndex(index === selectedCardIndex ? null : index);
   };
 
-  // Handle selecting an opponent to challenge
   const handleSelectOpponent = (opponentId) => {
     if (!gameState.players[opponentId]?.canBeChallenged) return;
     setSelectedOpponentId(opponentId === selectedOpponentId ? null : opponentId);
   };
 
-  // Submit challenge
   const handleChallenge = () => {
     if (selectedCardIndex !== null && selectedOpponentId) {
       onChallenge(selectedCardIndex, selectedOpponentId);
@@ -69,18 +68,108 @@ export default function Game({
     }
   };
 
-  // Respond to challenge
   const handleRespond = (cardIndex) => {
     onRespondToChallenge(cardIndex);
   };
 
-  // Get team color class
+  // Leader selection
+  const toggleLeaderSelection = (id) => {
+    if (selectedLeaders.includes(id)) {
+      setSelectedLeaders(selectedLeaders.filter(l => l !== id));
+    } else if (selectedLeaders.length < 2) {
+      setSelectedLeaders([...selectedLeaders, id]);
+    }
+  };
+
+  const handleCallLeaders = () => {
+    if (selectedLeaders.length > 0) {
+      onCallLeaders(selectedLeaders);
+      setShowCallLeaders(false);
+      setSelectedLeaders([]);
+    }
+  };
+
+  // Check if I won or lost
+  const iWon = gameResult?.winningPlayerIds?.includes(playerId);
+  const iLost = gameResult?.losingPlayerIds?.includes(playerId);
+
   const teamClass = privateState.team === 'red' ? 'team-red' : 'team-black';
 
   return (
     <div className="game">
+      {/* Game Result Overlay */}
+      {gameFinished && gameResult && (
+        <div className="duel-overlay">
+          <div className={`game-result-modal ${iWon ? 'won' : 'lost'}`}>
+            <h2>{iWon ? '🎉 Victory!' : '💀 Defeat!'}</h2>
+            <p className="result-subtitle">
+              {gameResult.callerName} called the leaders
+              {gameResult.correct ? ' correctly!' : ' incorrectly!'}
+            </p>
+
+            <div className="leaders-comparison">
+              <div className="leaders-column">
+                <h4>Guessed</h4>
+                {gameResult.guessedLeaders.map((leader, i) => (
+                  <span key={i} className="leader-name">{leader.name}</span>
+                ))}
+              </div>
+              <div className="leaders-column">
+                <h4>Actual</h4>
+                {gameResult.actualLeaders.map((leader, i) => (
+                  <span key={i} className="leader-name">{leader.name}</span>
+                ))}
+              </div>
+            </div>
+
+            <button onClick={onEndGame} className="btn-primary">
+              Return to Lobby
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Call Leaders Modal */}
+      {showCallLeaders && !gameFinished && (
+        <div className="duel-overlay">
+          <div className="call-leaders-modal">
+            <h2>Call the Leaders</h2>
+            <p>Select who you think the team leaders are (1 or 2 players)</p>
+
+            <div className="leader-selection">
+              {allPlayers.map(([id, player]) => (
+                <button
+                  key={id}
+                  className={`leader-option ${selectedLeaders.includes(id) ? 'selected' : ''}`}
+                  onClick={() => toggleLeaderSelection(id)}
+                >
+                  {player.name}
+                  {id === playerId && ' (you)'}
+                </button>
+              ))}
+            </div>
+
+            <div className="modal-actions">
+              <button
+                onClick={handleCallLeaders}
+                className="btn-primary"
+                disabled={selectedLeaders.length === 0}
+              >
+                Call Leaders ({selectedLeaders.length} selected)
+              </button>
+              <button
+                onClick={() => { setShowCallLeaders(false); setSelectedLeaders([]); }}
+                className="btn-cancel"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Duel Result Overlay */}
-      {duelResult && (
+      {duelResult && !gameFinished && (
         <div className="duel-overlay">
           <div className="duel-result">
             <h2>Duel!</h2>
@@ -112,7 +201,12 @@ export default function Game({
             Team {privateState.team === 'red' ? 'Red ♦' : 'Black ♠'}
           </span>
         </div>
-        <button onClick={onEndGame} className="btn-end">End Game</button>
+        <div className="header-actions">
+          <button onClick={() => setShowCallLeaders(true)} className="btn-call-leaders">
+            📢 Call Leaders
+          </button>
+          <button onClick={onEndGame} className="btn-end">End Game</button>
+        </div>
       </header>
 
       {/* Turn Indicator */}
