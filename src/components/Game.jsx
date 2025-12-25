@@ -311,7 +311,10 @@ export default function Game({
       {amBeingChallenged && gameState.duel.challengerCardBack && (
         <div className="challenge-card-display">
           <p>{gameState.duel.challengerName}'s card:</p>
-          <PublicCard back={gameState.duel.challengerCardBack} />
+          <div className="challenge-card-with-info">
+            <PublicCard back={gameState.duel.challengerCardBack} />
+            <CardPublicInfo info={gameState.duel.challengerCardPublicInfo} />
+          </div>
         </div>
       )}
 

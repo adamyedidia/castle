@@ -341,6 +341,7 @@ function getPublicState() {
       defenderName: gameState.players[gameState.duel.defenderId]?.name,
       // Show the back of the challenger's card to the defender
       challengerCardBack: challenger?.cards?.[gameState.duel.challengerCardIndex]?.back || null,
+      challengerCardPublicInfo: challenger?.cardPublicInfo?.[gameState.duel.challengerCardIndex] || null,
       waitingForDefender: gameState.duel.defenderCardIndex === null
     };
   }

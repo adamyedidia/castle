@@ -649,6 +649,12 @@ body {
   font-size: 0.9rem;
 }
 
+.challenge-card-with-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 /* Selectable Players */
 .other-player.selectable {
   cursor: pointer;
