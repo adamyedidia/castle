@@ -1,11 +1,6 @@
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 const app = express();
 const server = createServer(app);
@@ -14,14 +9,6 @@ const io = new Server(server, {
     origin: "*",
     methods: ["GET", "POST"]
   }
-});
-
-// Serve static files from dist folder
-app.use(express.static(join(__dirname, 'dist')));
-
-// Serve index.html for all non-API routes (SPA support)
-app.get('*', (req, res) => {
-  res.sendFile(join(__dirname, 'dist', 'index.html'));
 });
 
 // Game state
@@ -802,7 +789,7 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = 5046;
+const PORT = 5047;
 server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
