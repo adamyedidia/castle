@@ -18,7 +18,7 @@ function getPlayerId() {
   return playerId;
 }
 
-const socket = io(`${window.location.protocol}//${window.location.hostname}:5047`);
+const socket = io();
 
 export default function App() {
   const [gameState, setGameState] = useState({ phase: 'lobby', players: {} });
