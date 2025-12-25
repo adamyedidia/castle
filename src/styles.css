@@ -1089,6 +1089,23 @@ body {
   opacity: 0.5;
 }
 
+/* Private knowledge - cards you've seen in duels but aren't publicly revealed */
+.card.private-knowledge {
+  opacity: 0.5;
+  filter: saturate(0.4);
+  border-style: dashed;
+  position: relative;
+}
+
+.card.private-knowledge::after {
+  content: '👁';
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 0.6rem;
+  opacity: 0.7;
+}
+
 /* Card Back */
 .card-back {
   display: flex;

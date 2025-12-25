@@ -365,7 +365,8 @@ function getPrivateState(playerId) {
     cards: player.cards || [],
     soulCard: player.cards && player.cards.length ? getSoulCard(player.cards) : null,
     team: player.cards && player.cards.length ? getTeam(player.cards) : null,
-    unrevealedCardIndices: getUnrevealedCardIndices(player)
+    unrevealedCardIndices: getUnrevealedCardIndices(player),
+    privatelyKnownCards: player.privatelyKnownCards || {}
   };
 }
 
@@ -463,6 +464,9 @@ io.on('connection', (socket) => {
         defeatedJoker: false, // If true, this card beat a joker (means it's J, Q, K, or A)
         notJoker: false       // If true, this card beat a non-face card (means it's NOT a joker)
       }));
+      // Track cards this player has privately seen (from duels)
+      // Structure: { opponentId: { cardIndex: cardData, ... }, ... }
+      gameState.players[playerId].privatelyKnownCards = {};
     }
 
     // Set up turn order (randomized)
@@ -624,7 +628,20 @@ io.on('connection', (socket) => {
       duelResult.loser = duel.challengerId;
       duelResult.revealedCard = card1;
     }
-    // Note: ties don't reveal any info
+    // Note: ties don't reveal any public info
+
+    // Both players now privately know each other's cards from this duel
+    // Challenger learns defender's card
+    if (!challenger.privatelyKnownCards[duel.defenderId]) {
+      challenger.privatelyKnownCards[duel.defenderId] = {};
+    }
+    challenger.privatelyKnownCards[duel.defenderId][duel.defenderCardIndex] = { ...card2 };
+
+    // Defender learns challenger's card
+    if (!defender.privatelyKnownCards[duel.challengerId]) {
+      defender.privatelyKnownCards[duel.challengerId] = {};
+    }
+    defender.privatelyKnownCards[duel.challengerId][duel.challengerCardIndex] = { ...card1 };
 
     io.emit('duelResult', duelResult);
 

@@ -343,16 +343,26 @@ export default function Game({
                     const revealedData = player.revealedCardsData?.find(r => r.index === i);
                     const isCardRevealed = !!revealedData;
                     const publicInfo = !isCardRevealed ? player.cardPublicInfo?.[i] : null;
+                    const privatelyKnown = !isCardRevealed && privateState?.privatelyKnownCards?.[id]?.[i];
 
                     return (
                       <div key={i} className="card-slot">
-                        <Card
-                          card={isCardRevealed ? revealedData.card : null}
-                          back={back}
-                          revealed={isCardRevealed}
-                          small
-                        />
-                        {!isCardRevealed && <CardPublicInfo info={publicInfo} />}
+                        {privatelyKnown ? (
+                          <Card
+                            card={privatelyKnown}
+                            revealed={true}
+                            small
+                            privateKnowledge
+                          />
+                        ) : (
+                          <Card
+                            card={isCardRevealed ? revealedData.card : null}
+                            back={back}
+                            revealed={isCardRevealed}
+                            small
+                          />
+                        )}
+                        {!isCardRevealed && !privatelyKnown && <CardPublicInfo info={publicInfo} />}
                       </div>
                     );
                   })}

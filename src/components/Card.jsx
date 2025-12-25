@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Card({ card, back, revealed, isSubmitted, disabled, small }) {
+export default function Card({ card, back, revealed, isSubmitted, disabled, small, privateKnowledge }) {
   // If no card data and not revealed, show card back
   if (!card && !revealed) {
     return (
@@ -28,7 +28,7 @@ export default function Card({ card, back, revealed, isSubmitted, disabled, smal
 
   return (
     <div
-      className={`card card-front ${small ? 'card-small' : ''} ${isSubmitted ? 'submitted' : ''} ${disabled ? 'disabled' : ''}`}
+      className={`card card-front ${small ? 'card-small' : ''} ${isSubmitted ? 'submitted' : ''} ${disabled ? 'disabled' : ''} ${privateKnowledge ? 'private-knowledge' : ''}`}
     >
       <span className={`card-rank ${isRed ? 'rank-red' : 'rank-black'} ${isJoker ? 'rank-joker' : ''} ${isTwoDigit ? 'rank-two-digit' : ''}`}>
         {displayText}
