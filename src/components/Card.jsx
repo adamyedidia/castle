@@ -24,12 +24,13 @@ export default function Card({ card, back, revealed, isSubmitted, disabled, smal
   const isJoker = card.rank === 'joker';
   const isRed = card.color === 'red';
   const displayText = isJoker ? 'Joker' : card.rank;
+  const isTwoDigit = !isJoker && String(card.rank).length >= 2;
 
   return (
     <div
       className={`card card-front ${small ? 'card-small' : ''} ${isSubmitted ? 'submitted' : ''} ${disabled ? 'disabled' : ''}`}
     >
-      <span className={`card-rank ${isRed ? 'rank-red' : 'rank-black'} ${isJoker ? 'rank-joker' : ''}`}>
+      <span className={`card-rank ${isRed ? 'rank-red' : 'rank-black'} ${isJoker ? 'rank-joker' : ''} ${isTwoDigit ? 'rank-two-digit' : ''}`}>
         {displayText}
       </span>
     </div>

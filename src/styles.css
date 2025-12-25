@@ -1134,6 +1134,15 @@ body {
   font-size: 1.3rem;
 }
 
+/* Two-digit numbers (10, 11, 12, etc.) - 20% smaller */
+.card-rank.rank-two-digit {
+  font-size: 5.12rem; /* 6.4rem * 0.8 */
+}
+
+.card-small .card-rank.rank-two-digit {
+  font-size: 2.8rem; /* 3.5rem * 0.8 */
+}
+
 /* ===== DUEL OVERLAY ===== */
 .duel-overlay {
   position: fixed;
