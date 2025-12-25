@@ -1289,5 +1289,69 @@ body {
     width: 80px;
     height: 112px;
   }
+
+  /* Compact other players grid for mobile */
+  .other-players {
+    margin-bottom: 1rem;
+  }
+
+  .other-players h3 {
+    font-size: 0.7rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .players-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+
+  .other-player {
+    min-width: unset;
+    padding: 0.5rem;
+    border-radius: 8px;
+  }
+
+  .player-header {
+    margin-bottom: 0.4rem;
+  }
+
+  .player-header .name {
+    font-size: 0.75rem;
+  }
+
+  .player-cards {
+    gap: 0.25rem;
+  }
+
+  /* Smaller cards in other players section on mobile */
+  .player-cards .card,
+  .player-cards .card-slot {
+    width: 32px;
+    height: 45px;
+  }
+
+  .player-cards .card .rank {
+    font-size: 1rem;
+  }
+
+  .player-cards .card.rank-two-digit .rank {
+    font-size: 0.8rem;
+  }
+
+  .turn-badge {
+    font-size: 0.6rem;
+    padding: 0.1rem 0.3rem;
+  }
+
+  .all-revealed {
+    font-size: 0.6rem;
+  }
+
+  /* Smaller public info markers on mobile */
+  .player-cards .card-public-info {
+    font-size: 0.5rem;
+    gap: 0;
+  }
 }
 
