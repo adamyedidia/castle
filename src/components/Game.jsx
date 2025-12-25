@@ -107,19 +107,32 @@ export default function Game({
               {gameResult.correct ? ' correctly!' : ' incorrectly!'}
             </p>
 
-            <div className="leaders-comparison">
-              <div className="leaders-column">
-                <h4>Guessed</h4>
-                {gameResult.guessedLeaders.map((leader, i) => (
-                  <span key={i} className="leader-name">{leader.name}</span>
-                ))}
-              </div>
-              <div className="leaders-column">
-                <h4>Actual</h4>
-                {gameResult.actualLeaders.map((leader, i) => (
-                  <span key={i} className="leader-name">{leader.name}</span>
-                ))}
-              </div>
+            {/* All Players Revealed */}
+            <div className="all-players-revealed">
+              {gameResult.allPlayersRevealed?.map((player) => (
+                <div key={player.id} className={`revealed-player ${player.team}`}>
+                  <div className="revealed-player-header">
+                    {player.isRedLeader && <span className="crown red-crown">👑</span>}
+                    {player.isBlackLeader && <span className="crown black-crown">👑</span>}
+                    <span className="revealed-player-name">{player.name}</span>
+                    <span className={`team-indicator ${player.team}`}>
+                      {player.team === 'red' ? '♦' : '♠'}
+                    </span>
+                  </div>
+                  <div className="revealed-player-cards">
+                    {player.cards.map((card, i) => {
+                      const isSoul = card.rank === player.soulCard.rank &&
+                                     card.suit === player.soulCard.suit;
+                      return (
+                        <div key={i} className={`revealed-card-wrapper ${isSoul ? 'is-soul' : ''}`}>
+                          <Card card={card} revealed={true} small />
+                          {isSoul && <span className="soul-marker">★</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
 
             <button onClick={onEndGame} className="btn-primary">

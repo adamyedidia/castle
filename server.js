@@ -538,6 +538,32 @@ io.on('connection', (socket) => {
       }
     }
 
+    // Build full player reveal data
+    const allPlayersRevealed = Object.entries(gameState.players).map(([id, player]) => {
+      const soulCard = getSoulCard(player.cards);
+      const team = getTeam(player.cards);
+      const isRedLeader = team === 'red' && actualLeaders.includes(id);
+      const isBlackLeader = team === 'black' && actualLeaders.includes(id);
+
+      return {
+        id,
+        name: player.name,
+        cards: player.cards,
+        soulCard,
+        team,
+        isRedLeader,
+        isBlackLeader
+      };
+    });
+
+    // Sort by team (red first, then black), then by soul card rank descending
+    allPlayersRevealed.sort((a, b) => {
+      if (a.team !== b.team) {
+        return a.team === 'red' ? -1 : 1;
+      }
+      return getRankValue(b.soulCard.rank) - getRankValue(a.soulCard.rank);
+    });
+
     // Store game result
     gameState.gameResult = {
       callerId,
@@ -548,12 +574,14 @@ io.on('connection', (socket) => {
       })),
       actualLeaders: actualLeaders.map(id => ({
         id,
-        name: gameState.players[id]?.name
+        name: gameState.players[id]?.name,
+        team: getTeam(gameState.players[id]?.cards)
       })),
       correct,
       winningPlayerIds,
       losingPlayerIds,
-      singleTeam
+      singleTeam,
+      allPlayersRevealed
     };
 
     gameState.phase = 'finished';
