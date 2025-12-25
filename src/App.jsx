@@ -1,7 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import Lobby from './components/Lobby';
 import Game from './components/Game';
+
+// Generate a unique player ID
+function generatePlayerId() {
+  return 'player_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+}
+
+// Get or create persistent player ID from localStorage
+function getPlayerId() {
+  let playerId = localStorage.getItem('castle_player_id');
+  if (!playerId) {
+    playerId = generatePlayerId();
+    localStorage.setItem('castle_player_id', playerId);
+  }
+  return playerId;
+}
 
 const socket = io('http://localhost:3001');
 
@@ -11,19 +26,39 @@ export default function App() {
   const [playerName, setPlayerName] = useState('');
   const [hasJoined, setHasJoined] = useState(false);
   const [duelResult, setDuelResult] = useState(null);
+  const [playerId, setPlayerId] = useState(getPlayerId());
+
+  // Track if we've attempted to reconnect
+  const reconnectAttempted = useRef(false);
 
   useEffect(() => {
     socket.on('gameState', (state) => {
       setGameState(state);
+
+      // Check if we're already in the game (reconnecting)
+      const myPlayerId = getPlayerId();
+      if (state.players[myPlayerId] && !reconnectAttempted.current) {
+        reconnectAttempted.current = true;
+        // We're in the game - try to reconnect
+        const existingPlayer = state.players[myPlayerId];
+        setPlayerName(existingPlayer.name);
+        setHasJoined(true);
+        // Send rejoin to associate our new socket with our player
+        socket.emit('joinLobby', { playerId: myPlayerId, name: existingPlayer.name });
+      }
     });
 
     socket.on('privateState', (state) => {
       setPrivateState(state);
     });
 
+    socket.on('yourPlayerId', (id) => {
+      setPlayerId(id);
+      localStorage.setItem('castle_player_id', id);
+    });
+
     socket.on('duelResult', (result) => {
       setDuelResult(result);
-      // Clear after 3 seconds
       setTimeout(() => setDuelResult(null), 3000);
     });
 
@@ -33,13 +68,19 @@ export default function App() {
 
     socket.on('kicked', () => {
       alert('You have been kicked from the lobby');
+      // Generate a new player ID so they can rejoin fresh
+      const newPlayerId = generatePlayerId();
+      localStorage.setItem('castle_player_id', newPlayerId);
+      setPlayerId(newPlayerId);
       setHasJoined(false);
       setPlayerName('');
+      reconnectAttempted.current = false;
     });
 
     return () => {
       socket.off('gameState');
       socket.off('privateState');
+      socket.off('yourPlayerId');
       socket.off('duelResult');
       socket.off('error');
       socket.off('kicked');
@@ -47,8 +88,9 @@ export default function App() {
   }, []);
 
   const joinLobby = (name) => {
+    const myPlayerId = getPlayerId();
     setPlayerName(name);
-    socket.emit('joinLobby', name);
+    socket.emit('joinLobby', { playerId: myPlayerId, name });
     setHasJoined(true);
   };
 
@@ -68,8 +110,8 @@ export default function App() {
     socket.emit('unsubmitForDuel');
   };
 
-  const kickPlayer = (playerId) => {
-    socket.emit('kickPlayer', playerId);
+  const kickPlayer = (targetPlayerId) => {
+    socket.emit('kickPlayer', targetPlayerId);
   };
 
   if (!hasJoined) {
@@ -93,7 +135,7 @@ export default function App() {
     <Game
       gameState={gameState}
       privateState={privateState}
-      playerId={socket.id}
+      playerId={playerId}
       playerName={playerName}
       onSubmitForDuel={submitForDuel}
       onUnsubmitForDuel={unsubmitForDuel}
@@ -102,4 +144,3 @@ export default function App() {
     />
   );
 }
-
