@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function Lobby({ onJoin, players, hasJoined, playerName, onStartGame }) {
+export default function Lobby({ onJoin, players, hasJoined, playerName, onStartGame, onKickPlayer }) {
   const [name, setName] = useState('');
 
   const handleSubmit = (e) => {
@@ -10,7 +10,7 @@ export default function Lobby({ onJoin, players, hasJoined, playerName, onStartG
     }
   };
 
-  const playerList = Object.values(players);
+  const playerList = Object.entries(players);
 
   return (
     <div className="lobby">
@@ -40,10 +40,19 @@ export default function Lobby({ onJoin, players, hasJoined, playerName, onStartG
             <div className="players-section">
               <h3>Players in Lobby ({playerList.length})</h3>
               <ul className="player-list">
-                {playerList.map((player, i) => (
-                  <li key={i} className="player-item">
+                {playerList.map(([id, player]) => (
+                  <li key={id} className="player-item">
                     <span className="player-icon">♠</span>
-                    {player.name}
+                    <span className="player-name-text">{player.name}</span>
+                    {onKickPlayer && (
+                      <button
+                        className="btn-kick"
+                        onClick={() => onKickPlayer(id)}
+                        title={`Kick ${player.name}`}
+                      >
+                        ✕
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>

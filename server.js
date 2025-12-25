@@ -316,6 +316,23 @@ io.on('connection', (socket) => {
     console.log('Game ended, returning to lobby');
   });
 
+  // Kick a player from the lobby
+  socket.on('kickPlayer', (playerId) => {
+    if (gameState.phase !== 'lobby') {
+      socket.emit('error', 'Can only kick players in the lobby');
+      return;
+    }
+
+    const player = gameState.players[playerId];
+    if (player) {
+      console.log(`${player.name} was kicked from the lobby`);
+      // Notify the kicked player
+      io.to(playerId).emit('kicked');
+      delete gameState.players[playerId];
+      io.emit('gameState', getPublicState());
+    }
+  });
+
   // Handle disconnect
   socket.on('disconnect', () => {
     const player = gameState.players[socket.id];

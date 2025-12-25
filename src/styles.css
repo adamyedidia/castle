@@ -172,6 +172,33 @@ body {
   gap: 0.75rem;
 }
 
+.player-name-text {
+  flex: 1;
+}
+
+.btn-kick {
+  background: transparent;
+  border: 1px solid var(--text-muted);
+  color: var(--text-muted);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  padding: 0;
+  line-height: 1;
+}
+
+.btn-kick:hover {
+  border-color: var(--team-red);
+  color: var(--team-red);
+  background: var(--team-red-glow);
+}
+
 .player-icon {
   color: var(--text-muted);
 }
@@ -546,7 +573,7 @@ body {
 
 .card-rank {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  font-size: 4rem;
+  font-size: 6.4rem;
   font-weight: 700;
   line-height: 1;
   text-align: center;
@@ -561,16 +588,16 @@ body {
 }
 
 .card-rank.rank-joker {
-  font-size: 1.4rem;
+  font-size: 2.2rem;
   letter-spacing: -0.02em;
 }
 
 .card-small .card-rank {
-  font-size: 2.2rem;
+  font-size: 3.5rem;
 }
 
 .card-small .card-rank.rank-joker {
-  font-size: 0.8rem;
+  font-size: 1.3rem;
 }
 
 /* ===== DUEL OVERLAY ===== */

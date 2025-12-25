@@ -31,11 +31,18 @@ export default function App() {
       alert(message);
     });
 
+    socket.on('kicked', () => {
+      alert('You have been kicked from the lobby');
+      setHasJoined(false);
+      setPlayerName('');
+    });
+
     return () => {
       socket.off('gameState');
       socket.off('privateState');
       socket.off('duelResult');
       socket.off('error');
+      socket.off('kicked');
     };
   }, []);
 
@@ -61,6 +68,10 @@ export default function App() {
     socket.emit('unsubmitForDuel');
   };
 
+  const kickPlayer = (playerId) => {
+    socket.emit('kickPlayer', playerId);
+  };
+
   if (!hasJoined) {
     return <Lobby onJoin={joinLobby} players={gameState.players} />;
   }
@@ -73,6 +84,7 @@ export default function App() {
         hasJoined={hasJoined}
         playerName={playerName}
         onStartGame={startGame}
+        onKickPlayer={kickPlayer}
       />
     );
   }
