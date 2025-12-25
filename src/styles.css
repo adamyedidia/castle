@@ -482,6 +482,200 @@ body {
   font-style: italic;
 }
 
+/* Turn Indicator */
+.turn-indicator {
+  margin-bottom: 1.5rem;
+}
+
+.turn-alert {
+  padding: 1rem 1.5rem;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.1rem;
+}
+
+.turn-alert.your-turn {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.2) 0%, rgba(212, 175, 55, 0.1) 100%);
+  border: 1px solid var(--accent-gold);
+  color: var(--accent-gold);
+}
+
+.turn-alert.challenge-alert {
+  background: linear-gradient(135deg, rgba(196, 30, 58, 0.2) 0%, rgba(196, 30, 58, 0.1) 100%);
+  border: 1px solid var(--team-red);
+  color: #ff6b7a;
+}
+
+.turn-alert.waiting {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.alert-icon {
+  font-size: 1.3rem;
+}
+
+/* Challenge Card Display */
+.challenge-card-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--team-red);
+  border-radius: 10px;
+}
+
+.challenge-card-display p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+/* Selectable Players */
+.other-player.selectable {
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.other-player.selectable:hover {
+  border-color: var(--accent-gold);
+  transform: translateY(-2px);
+}
+
+.other-player.selected {
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+  background: rgba(212, 175, 55, 0.1);
+}
+
+.other-player.challenger {
+  border-color: var(--team-red);
+  box-shadow: 0 0 20px var(--team-red-glow);
+}
+
+.all-revealed {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.turn-badge {
+  font-size: 0.75rem;
+  background: var(--accent-gold);
+  color: var(--bg-deep);
+  padding: 0.2rem 0.5rem;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+/* Card Selection */
+.card-container.selected .card {
+  box-shadow: 0 0 30px rgba(212, 175, 55, 0.5);
+  transform: translateY(-8px);
+}
+
+.btn-select {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--bg-elevated);
+  border: 1px solid var(--text-muted);
+  color: var(--text-secondary);
+}
+
+.btn-select:hover {
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+}
+
+.btn-select.selected {
+  background: var(--accent-gold);
+  border-color: var(--accent-gold);
+  color: var(--bg-deep);
+  font-weight: 600;
+}
+
+/* Challenge Button */
+.challenge-action {
+  display: flex;
+  justify-content: center;
+  margin: 1.5rem 0;
+}
+
+.btn-challenge {
+  background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-gold-dim) 100%);
+  border: none;
+  border-radius: 10px;
+  padding: 1rem 2.5rem;
+  font-size: 1.2rem;
+  font-family: inherit;
+  font-weight: 700;
+  color: var(--bg-deep);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.btn-challenge:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(212, 175, 55, 0.4);
+}
+
+/* Turn Order Display */
+.turn-order {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: var(--bg-card);
+  border-radius: 8px;
+  margin-top: auto;
+  font-size: 0.85rem;
+}
+
+.turn-order-label {
+  color: var(--text-muted);
+  margin-right: 0.5rem;
+}
+
+.turn-order-player {
+  padding: 0.3rem 0.6rem;
+  background: var(--bg-dark);
+  border-radius: 4px;
+  color: var(--text-secondary);
+}
+
+.turn-order-player.you {
+  color: var(--accent-gold);
+  border: 1px solid var(--accent-gold);
+}
+
+.turn-order-player.current {
+  background: var(--accent-gold);
+  color: var(--bg-deep);
+  font-weight: 600;
+}
+
+.turn-order-player::after {
+  content: ' →';
+  color: var(--text-muted);
+  margin-left: 0.3rem;
+}
+
+.turn-order-player:last-child::after {
+  content: '';
+}
+
 /* ===== CARDS ===== */
 .card {
   width: 100px;

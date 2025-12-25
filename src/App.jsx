@@ -102,12 +102,12 @@ export default function App() {
     socket.emit('endGame');
   };
 
-  const submitForDuel = (cardIndex) => {
-    socket.emit('submitForDuel', cardIndex);
+  const challenge = (cardIndex, defenderId) => {
+    socket.emit('challenge', { cardIndex, defenderId });
   };
 
-  const unsubmitForDuel = () => {
-    socket.emit('unsubmitForDuel');
+  const respondToChallenge = (cardIndex) => {
+    socket.emit('respondToChallenge', cardIndex);
   };
 
   const kickPlayer = (targetPlayerId) => {
@@ -137,8 +137,8 @@ export default function App() {
       privateState={privateState}
       playerId={playerId}
       playerName={playerName}
-      onSubmitForDuel={submitForDuel}
-      onUnsubmitForDuel={unsubmitForDuel}
+      onChallenge={challenge}
+      onRespondToChallenge={respondToChallenge}
       onEndGame={endGame}
       duelResult={duelResult}
     />

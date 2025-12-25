@@ -11,18 +11,16 @@ const io = new Server(server, {
   }
 });
 
-// Game state - now keyed by persistent playerId, not socketId
+// Game state
 let gameState = {
   phase: 'lobby', // 'lobby' or 'playing'
-  players: {},    // playerId -> { name, cards, revealedCards, submittedCardIndex, socketId }
-  deck: [],
-  duel: {
-    challenger: null,
-    defender: null
-  }
+  players: {},    // playerId -> { name, cards, revealedCards, socketId }
+  turnOrder: [],  // Array of player IDs in turn order
+  currentTurnIndex: 0,
+  duel: null      // null or { challengerId, challengerCardIndex, defenderId, defenderCardIndex }
 };
 
-// Map socket IDs to player IDs for quick lookup
+// Map socket IDs to player IDs
 const socketToPlayer = {};
 
 // Card ranks for comparison (higher = better)
@@ -37,24 +35,20 @@ function createDeck() {
   const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
   const deck = [];
 
-  // Add diamonds (red suit, red back)
   for (const rank of ranks) {
     deck.push({ rank, suit: 'diamonds', color: 'red', back: 'red' });
   }
 
-  // Add spades (black suit, blue back)
   for (const rank of ranks) {
     deck.push({ rank, suit: 'spades', color: 'black', back: 'blue' });
   }
 
-  // Add jokers
   deck.push({ rank: 'joker', suit: 'joker', color: 'red', back: 'red' });
   deck.push({ rank: 'joker', suit: 'joker', color: 'black', back: 'blue' });
 
   return deck;
 }
 
-// Shuffle array in place
 function shuffle(array) {
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -63,7 +57,6 @@ function shuffle(array) {
   return array;
 }
 
-// Deal cards ensuring each player gets 2-1 color split
 function dealCards(playerIds) {
   const deck = shuffle(createDeck());
   const hands = {};
@@ -72,13 +65,11 @@ function dealCards(playerIds) {
     hands[playerId] = [];
   }
 
-  // First, deal 2 cards to each player
   for (const playerId of playerIds) {
     hands[playerId].push(deck.pop());
     hands[playerId].push(deck.pop());
   }
 
-  // Then deal the 3rd card, ensuring 2-1 color split
   for (const playerId of playerIds) {
     const currentBacks = hands[playerId].map(c => c.back);
     const redCount = currentBacks.filter(b => b === 'red').length;
@@ -103,7 +94,6 @@ function dealCards(playerIds) {
   return hands;
 }
 
-// Determine soul card for a hand
 function getSoulCard(cards) {
   const sorted = [...cards].sort((a, b) => getRankValue(b.rank) - getRankValue(a.rank));
 
@@ -114,13 +104,11 @@ function getSoulCard(cards) {
   return sorted[0];
 }
 
-// Get team for a player based on soul card
 function getTeam(cards) {
   const soulCard = getSoulCard(cards);
   return soulCard.color;
 }
 
-// Resolve a duel
 function resolveDuel(card1, card2) {
   const rank1 = getRankValue(card1.rank);
   const rank2 = getRankValue(card2.rank);
@@ -141,12 +129,68 @@ function resolveDuel(card1, card2) {
   return rank1 > rank2 ? 'player1' : 'player2';
 }
 
-// Get player ID from socket
 function getPlayerId(socket) {
   return socketToPlayer[socket.id];
 }
 
-// Get public game state (what everyone can see)
+// Get unrevealed card indices for a player
+function getUnrevealedCardIndices(player) {
+  const unrevealed = [];
+  for (let i = 0; i < (player.cards?.length || 0); i++) {
+    if (!player.revealedCards.includes(i)) {
+      unrevealed.push(i);
+    }
+  }
+  return unrevealed;
+}
+
+// Check if a player can be challenged (has unrevealed cards)
+function canBeChallenged(player) {
+  return getUnrevealedCardIndices(player).length > 0;
+}
+
+// Check if a player can challenge others (has unrevealed cards)
+function canChallenge(player) {
+  return getUnrevealedCardIndices(player).length > 0;
+}
+
+// Get current turn player ID
+function getCurrentTurnPlayerId() {
+  if (gameState.turnOrder.length === 0) return null;
+  return gameState.turnOrder[gameState.currentTurnIndex];
+}
+
+// Advance to next player's turn
+function advanceToNextTurn() {
+  if (gameState.turnOrder.length === 0) return;
+
+  const startIndex = gameState.currentTurnIndex;
+  let attempts = 0;
+
+  do {
+    gameState.currentTurnIndex = (gameState.currentTurnIndex + 1) % gameState.turnOrder.length;
+    attempts++;
+
+    const playerId = gameState.turnOrder[gameState.currentTurnIndex];
+    const player = gameState.players[playerId];
+
+    // Skip players who can't challenge
+    if (player && canChallenge(player)) {
+      break;
+    }
+  } while (attempts < gameState.turnOrder.length);
+
+  gameState.duel = null;
+}
+
+// Get public card representation (for showing to opponent during duel)
+function getPublicCardRepresentation(card) {
+  return {
+    back: card.back
+    // Future: add hints like ">8" etc.
+  };
+}
+
 function getPublicState() {
   const players = {};
   for (const [id, player] of Object.entries(gameState.players)) {
@@ -161,20 +205,36 @@ function getPublicState() {
       revealedCards: player.revealedCards || [],
       revealedCardsData: revealedCardsData,
       cardBacks: player.cards ? player.cards.map(c => c.back) : [],
-      hasSubmitted: player.submittedCardIndex !== null && player.submittedCardIndex !== undefined,
-      submittedCardIndex: player.submittedCardIndex,
-      connected: !!player.socketId
+      connected: !!player.socketId,
+      canBeChallenged: player.cards ? canBeChallenged(player) : false,
+      unrevealedCount: player.cards ? getUnrevealedCardIndices(player).length : 0
+    };
+  }
+
+  // Include duel state with public info only
+  let duelPublic = null;
+  if (gameState.duel) {
+    const challenger = gameState.players[gameState.duel.challengerId];
+    duelPublic = {
+      challengerId: gameState.duel.challengerId,
+      challengerName: challenger?.name,
+      defenderId: gameState.duel.defenderId,
+      defenderName: gameState.players[gameState.duel.defenderId]?.name,
+      // Show the back of the challenger's card to the defender
+      challengerCardBack: challenger?.cards?.[gameState.duel.challengerCardIndex]?.back || null,
+      waitingForDefender: gameState.duel.defenderCardIndex === null
     };
   }
 
   return {
     phase: gameState.phase,
     players,
-    duel: gameState.duel
+    turnOrder: gameState.turnOrder,
+    currentTurnPlayerId: getCurrentTurnPlayerId(),
+    duel: duelPublic
   };
 }
 
-// Get private state for a specific player
 function getPrivateState(playerId) {
   const player = gameState.players[playerId];
   if (!player) return null;
@@ -182,11 +242,11 @@ function getPrivateState(playerId) {
   return {
     cards: player.cards || [],
     soulCard: player.cards && player.cards.length ? getSoulCard(player.cards) : null,
-    team: player.cards && player.cards.length ? getTeam(player.cards) : null
+    team: player.cards && player.cards.length ? getTeam(player.cards) : null,
+    unrevealedCardIndices: getUnrevealedCardIndices(player)
   };
 }
 
-// Send state to a specific player by their playerId
 function sendStateToPlayer(playerId) {
   const player = gameState.players[playerId];
   if (player && player.socketId) {
@@ -196,21 +256,25 @@ function sendStateToPlayer(playerId) {
   }
 }
 
+function broadcastState() {
+  io.emit('gameState', getPublicState());
+  // Send private state to each connected player
+  for (const [playerId, player] of Object.entries(gameState.players)) {
+    if (player.socketId) {
+      io.to(player.socketId).emit('privateState', getPrivateState(playerId));
+    }
+  }
+}
+
 io.on('connection', (socket) => {
   console.log('Socket connected:', socket.id);
-
-  // Send current state to new connection
   socket.emit('gameState', getPublicState());
 
-  // Player joins or reconnects with their persistent ID
   socket.on('joinLobby', ({ playerId, name }) => {
-    // Check if this player already exists (reconnecting)
     if (gameState.players[playerId]) {
-      // Reconnecting - update socket ID
       const player = gameState.players[playerId];
       const oldSocketId = player.socketId;
 
-      // Clean up old socket mapping
       if (oldSocketId) {
         delete socketToPlayer[oldSocketId];
       }
@@ -219,12 +283,9 @@ io.on('connection', (socket) => {
       socketToPlayer[socket.id] = playerId;
 
       console.log(`${player.name} reconnected (${playerId})`);
-
-      // Send them their state
       sendStateToPlayer(playerId);
       io.emit('gameState', getPublicState());
     } else {
-      // New player joining lobby
       if (gameState.phase !== 'lobby') {
         socket.emit('error', 'Game already in progress');
         return;
@@ -234,7 +295,6 @@ io.on('connection', (socket) => {
         name,
         cards: [],
         revealedCards: [],
-        submittedCardIndex: null,
         socketId: socket.id
       };
       socketToPlayer[socket.id] = playerId;
@@ -245,7 +305,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Start the game
   socket.on('startGame', () => {
     const playerIds = Object.keys(gameState.players);
     if (playerIds.length < 2) {
@@ -258,99 +317,154 @@ io.on('connection', (socket) => {
     for (const playerId of playerIds) {
       gameState.players[playerId].cards = hands[playerId];
       gameState.players[playerId].revealedCards = [];
-      gameState.players[playerId].submittedCardIndex = null;
     }
 
+    // Set up turn order (randomized)
+    gameState.turnOrder = shuffle([...playerIds]);
+    gameState.currentTurnIndex = 0;
     gameState.phase = 'playing';
-    gameState.duel = { challenger: null, defender: null };
+    gameState.duel = null;
 
-    // Send public state to everyone
-    io.emit('gameState', getPublicState());
-
-    // Send private state to each player
-    for (const playerId of playerIds) {
-      const player = gameState.players[playerId];
-      if (player.socketId) {
-        io.to(player.socketId).emit('privateState', getPrivateState(playerId));
-      }
-    }
-
-    console.log('Game started!');
+    console.log('Game started! Turn order:', gameState.turnOrder.map(id => gameState.players[id].name));
+    broadcastState();
   });
 
-  // Submit card for duel
-  socket.on('submitForDuel', (cardIndex) => {
+  // Challenger selects a card and a player to challenge
+  socket.on('challenge', ({ cardIndex, defenderId }) => {
     const playerId = getPlayerId(socket);
     const player = gameState.players[playerId];
+
     if (!player || gameState.phase !== 'playing') return;
 
-    if (player.revealedCards.includes(cardIndex)) {
-      socket.emit('error', 'Cannot submit a revealed card');
+    // Check it's this player's turn
+    if (getCurrentTurnPlayerId() !== playerId) {
+      socket.emit('error', "It's not your turn");
       return;
     }
 
-    player.submittedCardIndex = cardIndex;
-
-    const submittedPlayers = Object.entries(gameState.players)
-      .filter(([_, p]) => p.submittedCardIndex !== null && p.submittedCardIndex !== undefined);
-
-    if (submittedPlayers.length === 2) {
-      const [[id1, p1], [id2, p2]] = submittedPlayers;
-      const card1 = p1.cards[p1.submittedCardIndex];
-      const card2 = p2.cards[p2.submittedCardIndex];
-
-      const result = resolveDuel(card1, card2);
-
-      let duelResult = {
-        challenger: { id: id1, name: p1.name, cardIndex: p1.submittedCardIndex },
-        defender: { id: id2, name: p2.name, cardIndex: p2.submittedCardIndex },
-        result
-      };
-
-      if (result === 'player1') {
-        p2.revealedCards.push(p2.submittedCardIndex);
-        duelResult.loser = id2;
-        duelResult.revealedCard = card2;
-      } else if (result === 'player2') {
-        p1.revealedCards.push(p1.submittedCardIndex);
-        duelResult.loser = id1;
-        duelResult.revealedCard = card1;
-      }
-
-      p1.submittedCardIndex = null;
-      p2.submittedCardIndex = null;
-
-      io.emit('duelResult', duelResult);
+    // Check there's no active duel
+    if (gameState.duel) {
+      socket.emit('error', 'A duel is already in progress');
+      return;
     }
 
-    io.emit('gameState', getPublicState());
+    // Check the card is unrevealed
+    if (player.revealedCards.includes(cardIndex)) {
+      socket.emit('error', 'Cannot use a revealed card');
+      return;
+    }
+
+    // Check the defender exists and can be challenged
+    const defender = gameState.players[defenderId];
+    if (!defender) {
+      socket.emit('error', 'Invalid defender');
+      return;
+    }
+
+    if (!canBeChallenged(defender)) {
+      socket.emit('error', 'That player has no unrevealed cards');
+      return;
+    }
+
+    // Start the duel
+    gameState.duel = {
+      challengerId: playerId,
+      challengerCardIndex: cardIndex,
+      defenderId: defenderId,
+      defenderCardIndex: null
+    };
+
+    console.log(`${player.name} challenges ${defender.name} with card ${cardIndex}`);
+
+    // Check if defender has only one unrevealed card - auto-submit
+    const defenderUnrevealed = getUnrevealedCardIndices(defender);
+    if (defenderUnrevealed.length === 1) {
+      // Auto-submit the only available card
+      gameState.duel.defenderCardIndex = defenderUnrevealed[0];
+      console.log(`${defender.name} auto-submits their only unrevealed card`);
+      resolveDuelAndAdvance();
+    } else {
+      broadcastState();
+    }
   });
 
-  // Unsubmit card
-  socket.on('unsubmitForDuel', () => {
+  // Defender responds to challenge
+  socket.on('respondToChallenge', (cardIndex) => {
     const playerId = getPlayerId(socket);
     const player = gameState.players[playerId];
-    if (!player) return;
 
-    player.submittedCardIndex = null;
-    io.emit('gameState', getPublicState());
+    if (!player || gameState.phase !== 'playing') return;
+
+    // Check there's an active duel waiting for this player
+    if (!gameState.duel || gameState.duel.defenderId !== playerId) {
+      socket.emit('error', 'You are not being challenged');
+      return;
+    }
+
+    if (gameState.duel.defenderCardIndex !== null) {
+      socket.emit('error', 'You already responded');
+      return;
+    }
+
+    // Check the card is unrevealed
+    if (player.revealedCards.includes(cardIndex)) {
+      socket.emit('error', 'Cannot use a revealed card');
+      return;
+    }
+
+    gameState.duel.defenderCardIndex = cardIndex;
+    console.log(`${player.name} responds with card ${cardIndex}`);
+
+    resolveDuelAndAdvance();
   });
 
-  // End game - return to lobby
+  function resolveDuelAndAdvance() {
+    const duel = gameState.duel;
+    const challenger = gameState.players[duel.challengerId];
+    const defender = gameState.players[duel.defenderId];
+
+    const card1 = challenger.cards[duel.challengerCardIndex];
+    const card2 = defender.cards[duel.defenderCardIndex];
+
+    const result = resolveDuel(card1, card2);
+
+    let duelResult = {
+      challenger: { id: duel.challengerId, name: challenger.name, cardIndex: duel.challengerCardIndex },
+      defender: { id: duel.defenderId, name: defender.name, cardIndex: duel.defenderCardIndex },
+      result
+    };
+
+    if (result === 'player1') {
+      defender.revealedCards.push(duel.defenderCardIndex);
+      duelResult.loser = duel.defenderId;
+      duelResult.revealedCard = card2;
+    } else if (result === 'player2') {
+      challenger.revealedCards.push(duel.challengerCardIndex);
+      duelResult.loser = duel.challengerId;
+      duelResult.revealedCard = card1;
+    }
+
+    io.emit('duelResult', duelResult);
+
+    // Advance turn
+    advanceToNextTurn();
+    broadcastState();
+  }
+
   socket.on('endGame', () => {
     gameState.phase = 'lobby';
     for (const player of Object.values(gameState.players)) {
       player.cards = [];
       player.revealedCards = [];
-      player.submittedCardIndex = null;
     }
-    gameState.duel = { challenger: null, defender: null };
+    gameState.turnOrder = [];
+    gameState.currentTurnIndex = 0;
+    gameState.duel = null;
 
     io.emit('gameState', getPublicState());
     console.log('Game ended, returning to lobby');
   });
 
-  // Kick a player from the lobby
   socket.on('kickPlayer', (playerId) => {
     if (gameState.phase !== 'lobby') {
       socket.emit('error', 'Can only kick players in the lobby');
@@ -369,7 +483,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Handle disconnect - don't remove player, just mark as disconnected
   socket.on('disconnect', () => {
     const playerId = socketToPlayer[socket.id];
     if (playerId && gameState.players[playerId]) {
