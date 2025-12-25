@@ -18,7 +18,11 @@ let gameState = {
   turnOrder: [],  // Array of player IDs in turn order
   currentTurnIndex: 0,
   duel: null,     // null or { challengerId, challengerCardIndex, defenderId, defenderCardIndex }
-  gameResult: null // null or { callerId, guessedLeaders, actualLeaders, correct, winningTeam, losingTeam }
+  gameResult: null, // null or { callerId, guessedLeaders, actualLeaders, correct, winningTeam, losingTeam }
+  houseRules: {
+    noCallingSelf: true,
+    oneTraitor: true
+  }
 };
 
 // Map socket IDs to player IDs
@@ -58,7 +62,65 @@ function shuffle(array) {
   return array;
 }
 
-function dealCards(playerIds) {
+// Check if a player is a "traitor" (soul card is minority color)
+function isTraitor(cards) {
+  const soulCard = getSoulCard(cards);
+  const soulColor = soulCard.color;
+
+  // Count card back colors (which correspond to card colors)
+  const redCount = cards.filter(c => c.color === 'red').length;
+  const blackCount = cards.filter(c => c.color === 'black').length;
+
+  // Majority color
+  const majorityColor = redCount > blackCount ? 'red' : 'black';
+
+  // Traitor if soul card is NOT the majority color
+  return soulColor !== majorityColor;
+}
+
+// Check if a deal is valid (balanced teams + optional one traitor rule)
+function isValidDeal(hands) {
+  let redTeamCount = 0;
+  let blackTeamCount = 0;
+  let redTeamTraitors = 0;
+  let blackTeamTraitors = 0;
+
+  for (const cards of Object.values(hands)) {
+    const team = getTeamFromCards(cards);
+    const traitor = isTraitor(cards);
+
+    if (team === 'red') {
+      redTeamCount++;
+      if (traitor) redTeamTraitors++;
+    } else {
+      blackTeamCount++;
+      if (traitor) blackTeamTraitors++;
+    }
+  }
+
+  // Teams must differ by at most 1
+  if (Math.abs(redTeamCount - blackTeamCount) > 1) {
+    return false;
+  }
+
+  // If "one traitor" rule is active, each team must have exactly one traitor
+  if (gameState.houseRules.oneTraitor) {
+    // Each team must exist and have exactly one traitor
+    if (redTeamCount > 0 && redTeamTraitors !== 1) return false;
+    if (blackTeamCount > 0 && blackTeamTraitors !== 1) return false;
+  }
+
+  return true;
+}
+
+// Helper to get team from cards (used during dealing before full game state)
+function getTeamFromCards(cards) {
+  const soulCard = getSoulCard(cards);
+  return soulCard.color;
+}
+
+// Deal a single set of hands (may not be valid)
+function dealCardsOnce(playerIds) {
   const deck = shuffle(createDeck());
   const hands = {};
 
@@ -93,6 +155,26 @@ function dealCards(playerIds) {
   }
 
   return hands;
+}
+
+// Deal cards with validation - retry until we get balanced teams
+function dealCards(playerIds) {
+  const MAX_ATTEMPTS = 1000;
+
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const hands = dealCardsOnce(playerIds);
+
+    if (isValidDeal(hands)) {
+      if (attempt > 0) {
+        console.log(`Valid deal found after ${attempt + 1} attempts`);
+      }
+      return hands;
+    }
+  }
+
+  // Fallback (shouldn't happen in practice)
+  console.warn('Could not find valid deal after max attempts, using last attempt');
+  return dealCardsOnce(playerIds);
 }
 
 function getSoulCard(cards) {
@@ -268,7 +350,8 @@ function getPublicState() {
     turnOrder: gameState.turnOrder,
     currentTurnPlayerId: getCurrentTurnPlayerId(),
     duel: duelPublic,
-    gameResult: gameState.gameResult
+    gameResult: gameState.gameResult,
+    houseRules: gameState.houseRules
   };
 }
 
@@ -340,6 +423,24 @@ io.on('connection', (socket) => {
       io.emit('gameState', getPublicState());
       socket.emit('yourPlayerId', playerId);
     }
+  });
+
+  // Update house rules (only in lobby)
+  socket.on('updateHouseRules', (rules) => {
+    if (gameState.phase !== 'lobby') {
+      socket.emit('error', 'Can only change rules in the lobby');
+      return;
+    }
+
+    if (typeof rules.noCallingSelf === 'boolean') {
+      gameState.houseRules.noCallingSelf = rules.noCallingSelf;
+    }
+    if (typeof rules.oneTraitor === 'boolean') {
+      gameState.houseRules.oneTraitor = rules.oneTraitor;
+    }
+
+    console.log('House rules updated:', gameState.houseRules);
+    io.emit('gameState', getPublicState());
   });
 
   socket.on('startGame', () => {
@@ -495,6 +596,12 @@ io.on('connection', (socket) => {
 
     if (!caller || gameState.phase !== 'playing') {
       socket.emit('error', 'Cannot call leaders now');
+      return;
+    }
+
+    // Check "no calling yourself" rule
+    if (gameState.houseRules.noCallingSelf && guessedLeaderIds.includes(callerId)) {
+      socket.emit('error', 'You cannot call yourself as a leader (house rule)');
       return;
     }
 

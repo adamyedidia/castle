@@ -118,8 +118,12 @@ export default function App() {
     socket.emit('kickPlayer', targetPlayerId);
   };
 
+  const updateHouseRules = (rules) => {
+    socket.emit('updateHouseRules', rules);
+  };
+
   if (!hasJoined) {
-    return <Lobby onJoin={joinLobby} players={gameState.players} />;
+    return <Lobby onJoin={joinLobby} players={gameState.players} houseRules={gameState.houseRules} />;
   }
 
   if (gameState.phase === 'lobby') {
@@ -131,6 +135,8 @@ export default function App() {
         playerName={playerName}
         onStartGame={startGame}
         onKickPlayer={kickPlayer}
+        houseRules={gameState.houseRules}
+        onUpdateHouseRules={updateHouseRules}
       />
     );
   }

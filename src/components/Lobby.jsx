@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function Lobby({ onJoin, players, hasJoined, playerName, onStartGame, onKickPlayer }) {
+export default function Lobby({ onJoin, players, hasJoined, playerName, onStartGame, onKickPlayer, houseRules, onUpdateHouseRules }) {
   const [name, setName] = useState('');
 
   const handleSubmit = (e) => {
@@ -11,6 +11,12 @@ export default function Lobby({ onJoin, players, hasJoined, playerName, onStartG
   };
 
   const playerList = Object.entries(players);
+
+  const handleRuleChange = (rule, value) => {
+    if (onUpdateHouseRules) {
+      onUpdateHouseRules({ [rule]: value });
+    }
+  };
 
   return (
     <div className="lobby">
@@ -58,6 +64,31 @@ export default function Lobby({ onJoin, players, hasJoined, playerName, onStartG
               </ul>
             </div>
 
+            {/* House Rules */}
+            {houseRules && onUpdateHouseRules && (
+              <div className="house-rules-section">
+                <h3>House Rules</h3>
+                <label className="house-rule-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={houseRules.noCallingSelf ?? true}
+                    onChange={(e) => handleRuleChange('noCallingSelf', e.target.checked)}
+                  />
+                  <span className="checkbox-label">No calling yourself</span>
+                  <span className="checkbox-hint">You cannot name yourself as a leader when calling</span>
+                </label>
+                <label className="house-rule-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={houseRules.oneTraitor ?? true}
+                    onChange={(e) => handleRuleChange('oneTraitor', e.target.checked)}
+                  />
+                  <span className="checkbox-label">One traitor</span>
+                  <span className="checkbox-hint">Each team has exactly one player whose soul card is their minority color</span>
+                </label>
+              </div>
+            )}
+
             {playerList.length >= 2 ? (
               <button onClick={onStartGame} className="btn-primary btn-start">
                 Start Game
@@ -82,4 +113,3 @@ export default function Lobby({ onJoin, players, hasJoined, playerName, onStartG
     </div>
   );
 }
-

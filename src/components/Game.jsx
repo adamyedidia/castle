@@ -150,16 +150,24 @@ export default function Game({
             <p>Select who you think the team leaders are (1 or 2 players)</p>
 
             <div className="leader-selection">
-              {allPlayers.map(([id, player]) => (
-                <button
-                  key={id}
-                  className={`leader-option ${selectedLeaders.includes(id) ? 'selected' : ''}`}
-                  onClick={() => toggleLeaderSelection(id)}
-                >
-                  {player.name}
-                  {id === playerId && ' (you)'}
-                </button>
-              ))}
+              {allPlayers.map(([id, player]) => {
+                const isMe = id === playerId;
+                const noCallingSelf = gameState.houseRules?.noCallingSelf;
+                const isDisabled = isMe && noCallingSelf;
+
+                return (
+                  <button
+                    key={id}
+                    className={`leader-option ${selectedLeaders.includes(id) ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
+                    onClick={() => !isDisabled && toggleLeaderSelection(id)}
+                    disabled={isDisabled}
+                  >
+                    {player.name}
+                    {isMe && ' (you)'}
+                    {isDisabled && ' - cannot call self'}
+                  </button>
+                );
+              })}
             </div>
 
             <div className="modal-actions">
