@@ -419,7 +419,7 @@ export default function Game({
                             small
                           />
                         )}
-                        {!isCardRevealed && !privatelyKnown && <CardPublicInfo info={publicInfo} />}
+                        {!isCardRevealed && <CardPublicInfo info={publicInfo} />}
                       </div>
                     );
                   })}
