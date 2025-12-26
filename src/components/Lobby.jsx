@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function Lobby({ onJoin, players, hasJoined, playerName, onStartGame, onKickPlayer, houseRules, onUpdateHouseRules }) {
+export default function Lobby({ onJoin, players, hasJoined, playerName, onStartGame, onKickPlayer, houseRules, onUpdateHouseRules, turnTimer, onUpdateTurnTimer }) {
   const [name, setName] = useState('');
 
   const handleSubmit = (e) => {
@@ -15,6 +15,12 @@ export default function Lobby({ onJoin, players, hasJoined, playerName, onStartG
   const handleRuleChange = (rule, value) => {
     if (onUpdateHouseRules) {
       onUpdateHouseRules({ [rule]: value });
+    }
+  };
+
+  const handleTimerChange = (updates) => {
+    if (onUpdateTurnTimer) {
+      onUpdateTurnTimer(updates);
     }
   };
 
@@ -86,6 +92,38 @@ export default function Lobby({ onJoin, players, hasJoined, playerName, onStartG
                   <span className="checkbox-label">One traitor</span>
                   <span className="checkbox-hint">Each team has exactly one player whose soul card is their minority color</span>
                 </label>
+              </div>
+            )}
+
+            {/* Turn Timer */}
+            {turnTimer && onUpdateTurnTimer && (
+              <div className="house-rules-section">
+                <h3>Turn Timer</h3>
+                <label className="house-rule-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={turnTimer.enabled ?? false}
+                    onChange={(e) => handleTimerChange({ enabled: e.target.checked })}
+                  />
+                  <span className="checkbox-label">Enable turn timer</span>
+                  <span className="checkbox-hint">Auto-move after time runs out</span>
+                </label>
+                {turnTimer.enabled && (
+                  <div className="timer-select">
+                    <label>Time per action:</label>
+                    <select
+                      value={turnTimer.seconds ?? 15}
+                      onChange={(e) => handleTimerChange({ seconds: parseInt(e.target.value) })}
+                    >
+                      <option value={5}>5 seconds</option>
+                      <option value={10}>10 seconds</option>
+                      <option value={15}>15 seconds</option>
+                      <option value={20}>20 seconds</option>
+                      <option value={30}>30 seconds</option>
+                      <option value={60}>60 seconds</option>
+                    </select>
+                  </div>
+                )}
               </div>
             )}
 

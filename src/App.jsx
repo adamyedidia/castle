@@ -122,8 +122,12 @@ export default function App() {
     socket.emit('updateHouseRules', rules);
   };
 
+  const updateTurnTimer = (settings) => {
+    socket.emit('updateTurnTimer', settings);
+  };
+
   if (!hasJoined) {
-    return <Lobby onJoin={joinLobby} players={gameState.players} houseRules={gameState.houseRules} />;
+    return <Lobby onJoin={joinLobby} players={gameState.players} houseRules={gameState.houseRules} turnTimer={gameState.turnTimer} />;
   }
 
   if (gameState.phase === 'lobby') {
@@ -137,6 +141,8 @@ export default function App() {
         onKickPlayer={kickPlayer}
         houseRules={gameState.houseRules}
         onUpdateHouseRules={updateHouseRules}
+        turnTimer={gameState.turnTimer}
+        onUpdateTurnTimer={updateTurnTimer}
       />
     );
   }

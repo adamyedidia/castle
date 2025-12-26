@@ -22,6 +22,12 @@ let gameState = {
   houseRules: {
     noCallingSelf: true,
     oneTraitor: true
+  },
+  turnTimer: {
+    enabled: false,
+    seconds: 15,        // Default timer duration
+    turnStartTime: null, // When the current turn/action started
+    timerId: null       // Server-side timer reference
   }
 };
 
@@ -278,6 +284,97 @@ function getCurrentTurnPlayerId() {
   return gameState.turnOrder[gameState.currentTurnIndex];
 }
 
+// Timer functions
+function clearTurnTimer() {
+  if (gameState.turnTimer.timerId) {
+    clearTimeout(gameState.turnTimer.timerId);
+    gameState.turnTimer.timerId = null;
+  }
+  gameState.turnTimer.turnStartTime = null;
+}
+
+function startTurnTimer() {
+  clearTurnTimer();
+
+  if (!gameState.turnTimer.enabled || gameState.phase !== 'playing') {
+    return;
+  }
+
+  gameState.turnTimer.turnStartTime = Date.now();
+
+  gameState.turnTimer.timerId = setTimeout(() => {
+    handleTimerExpired();
+  }, gameState.turnTimer.seconds * 1000);
+}
+
+function handleTimerExpired() {
+  if (gameState.phase !== 'playing') return;
+
+  // Determine what action needs to be taken
+  if (gameState.duel && gameState.duel.defenderCardIndex === null) {
+    // Defender needs to respond - auto-select a card
+    const defenderId = gameState.duel.defenderId;
+    const defender = gameState.players[defenderId];
+    if (defender) {
+      const unrevealedIndices = getUnrevealedCardIndices(defender);
+      if (unrevealedIndices.length > 0) {
+        const randomIndex = unrevealedIndices[Math.floor(Math.random() * unrevealedIndices.length)];
+        gameState.duel.defenderCardIndex = randomIndex;
+        console.log(`Timer expired: ${defender.name} auto-responds with card ${randomIndex}`);
+        resolveDuelAndAdvance();
+        return;
+      }
+    }
+  } else if (!gameState.duel) {
+    // It's someone's turn to challenge - auto-select opponent and card
+    const currentPlayerId = getCurrentTurnPlayerId();
+    const currentPlayer = gameState.players[currentPlayerId];
+
+    if (currentPlayer && canChallenge(currentPlayer)) {
+      // Find valid opponents
+      const validOpponents = Object.entries(gameState.players)
+        .filter(([id, p]) => id !== currentPlayerId && canBeChallenged(p))
+        .map(([id]) => id);
+
+      if (validOpponents.length > 0) {
+        const randomOpponentId = validOpponents[Math.floor(Math.random() * validOpponents.length)];
+        const unrevealedIndices = getUnrevealedCardIndices(currentPlayer);
+
+        if (unrevealedIndices.length > 0) {
+          const randomCardIndex = unrevealedIndices[Math.floor(Math.random() * unrevealedIndices.length)];
+
+          // Start the duel
+          gameState.duel = {
+            challengerId: currentPlayerId,
+            challengerCardIndex: randomCardIndex,
+            defenderId: randomOpponentId,
+            defenderCardIndex: null
+          };
+
+          console.log(`Timer expired: ${currentPlayer.name} auto-challenges ${gameState.players[randomOpponentId].name} with card ${randomCardIndex}`);
+
+          // Check if defender has only one card
+          const defender = gameState.players[randomOpponentId];
+          const defenderUnrevealed = getUnrevealedCardIndices(defender);
+          if (defenderUnrevealed.length === 1) {
+            gameState.duel.defenderCardIndex = defenderUnrevealed[0];
+            resolveDuelAndAdvance();
+          } else {
+            // Start timer for defender
+            startTurnTimer();
+            broadcastState();
+          }
+          return;
+        }
+      }
+    }
+
+    // If we couldn't make a move, advance to next turn
+    advanceToNextTurn();
+    broadcastState();
+  }
+}
+
 // Advance to next player's turn
 function advanceToNextTurn() {
   if (gameState.turnOrder.length === 0) return;
@@ -299,6 +396,9 @@ function advanceToNextTurn() {
   } while (attempts < gameState.turnOrder.length);
 
   gameState.duel = null;
+
+  // Start timer for the new turn
+  startTurnTimer();
 }
 
 // Get public card representation (for showing to opponent during duel)
@@ -354,7 +454,12 @@ function getPublicState() {
     currentTurnPlayerId: getCurrentTurnPlayerId(),
     duel: duelPublic,
     gameResult: gameState.gameResult,
-    houseRules: gameState.houseRules
+    houseRules: gameState.houseRules,
+    turnTimer: gameState.turnTimer.enabled ? {
+      enabled: true,
+      seconds: gameState.turnTimer.seconds,
+      turnStartTime: gameState.turnTimer.turnStartTime
+    } : { enabled: false }
   };
 }
 
@@ -447,6 +552,23 @@ io.on('connection', (socket) => {
     io.emit('gameState', getPublicState());
   });
 
+  socket.on('updateTurnTimer', ({ enabled, seconds }) => {
+    if (gameState.phase !== 'lobby') {
+      socket.emit('error', 'Can only change timer in the lobby');
+      return;
+    }
+
+    if (typeof enabled === 'boolean') {
+      gameState.turnTimer.enabled = enabled;
+    }
+    if (typeof seconds === 'number' && [5, 10, 15, 20, 30, 60].includes(seconds)) {
+      gameState.turnTimer.seconds = seconds;
+    }
+
+    console.log('Turn timer updated:', { enabled: gameState.turnTimer.enabled, seconds: gameState.turnTimer.seconds });
+    io.emit('gameState', getPublicState());
+  });
+
   socket.on('startGame', () => {
     const playerIds = Object.keys(gameState.players);
     if (playerIds.length < 2) {
@@ -477,6 +599,10 @@ io.on('connection', (socket) => {
     gameState.duel = null;
 
     console.log('Game started! Turn order:', gameState.turnOrder.map(id => gameState.players[id].name));
+
+    // Start the turn timer
+    startTurnTimer();
+
     broadcastState();
   });
 
@@ -535,6 +661,8 @@ io.on('connection', (socket) => {
       console.log(`${defender.name} auto-submits their only unrevealed card`);
       resolveDuelAndAdvance();
     } else {
+      // Start timer for defender to respond
+      startTurnTimer();
       broadcastState();
     }
   });
@@ -763,6 +891,8 @@ io.on('connection', (socket) => {
   });
 
   socket.on('endGame', () => {
+    clearTurnTimer();
+
     gameState.phase = 'lobby';
     for (const player of Object.values(gameState.players)) {
       player.cards = [];

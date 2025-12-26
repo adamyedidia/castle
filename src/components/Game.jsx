@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Card from './Card';
 
 // Rank order for comparison (higher index = higher rank)
@@ -81,11 +81,30 @@ export default function Game({
   const [selectedOpponentId, setSelectedOpponentId] = useState(null);
   const [showCallLeaders, setShowCallLeaders] = useState(false);
   const [selectedLeaders, setSelectedLeaders] = useState([]);
+  const [timeRemaining, setTimeRemaining] = useState(null);
 
   const myPlayer = gameState.players[playerId];
   const otherPlayers = Object.entries(gameState.players)
     .filter(([id]) => id !== playerId);
   const allPlayers = Object.entries(gameState.players);
+
+  // Timer countdown effect
+  useEffect(() => {
+    if (!gameState.turnTimer?.enabled || !gameState.turnTimer?.turnStartTime) {
+      setTimeRemaining(null);
+      return;
+    }
+
+    const updateTimer = () => {
+      const elapsed = (Date.now() - gameState.turnTimer.turnStartTime) / 1000;
+      const remaining = Math.max(0, gameState.turnTimer.seconds - elapsed);
+      setTimeRemaining(Math.ceil(remaining));
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 100);
+    return () => clearInterval(interval);
+  }, [gameState.turnTimer?.enabled, gameState.turnTimer?.turnStartTime, gameState.turnTimer?.seconds]);
 
   const isMyTurn = gameState.currentTurnPlayerId === playerId;
   const currentTurnPlayer = gameState.players[gameState.currentTurnPlayerId];
@@ -283,6 +302,19 @@ export default function Game({
           <button onClick={onEndGame} className="btn-end">End Game</button>
         </div>
       </header>
+
+      {/* Turn Timer */}
+      {gameState.turnTimer?.enabled && timeRemaining !== null && (
+        <div className={`turn-timer ${timeRemaining <= 5 ? 'timer-warning' : ''} ${timeRemaining <= 3 ? 'timer-critical' : ''}`}>
+          <div className="timer-bar">
+            <div
+              className="timer-fill"
+              style={{ width: `${(timeRemaining / gameState.turnTimer.seconds) * 100}%` }}
+            />
+          </div>
+          <span className="timer-text">{timeRemaining}s</span>
+        </div>
+      )}
 
       {/* Turn Indicator */}
       <div className="turn-indicator">

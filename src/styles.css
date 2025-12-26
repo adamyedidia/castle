@@ -279,6 +279,34 @@ body {
   margin-left: 26px;
 }
 
+.timer-select {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  margin-left: 26px;
+}
+
+.timer-select label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.timer-select select {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.timer-select select:focus {
+  outline: none;
+  border-color: var(--accent-gold);
+}
+
 .btn-start {
   width: 100%;
 }
@@ -338,7 +366,64 @@ body {
   justify-content: space-between;
   padding: 1rem 0;
   border-bottom: 1px solid var(--border-subtle);
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
+}
+
+/* Turn Timer */
+.turn-timer {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+  background: var(--bg-card);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.timer-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--bg-elevated);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.timer-fill {
+  height: 100%;
+  background: var(--accent-gold);
+  transition: width 0.1s linear;
+  border-radius: 4px;
+}
+
+.timer-text {
+  font-weight: 700;
+  font-size: 1.2rem;
+  min-width: 40px;
+  text-align: right;
+  color: var(--text-primary);
+}
+
+.turn-timer.timer-warning .timer-fill {
+  background: #f59e0b;
+}
+
+.turn-timer.timer-warning .timer-text {
+  color: #f59e0b;
+}
+
+.turn-timer.timer-critical .timer-fill {
+  background: var(--team-red);
+  animation: pulse 0.5s ease-in-out infinite;
+}
+
+.turn-timer.timer-critical .timer-text {
+  color: var(--team-red);
+  animation: pulse 0.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 
 .game-header h1 {
@@ -1310,6 +1395,16 @@ body {
   /* Compact other players grid for mobile */
   .other-players {
     margin-bottom: 1rem;
+    flex-shrink: 0;
+  }
+
+  .your-hand {
+    flex: 0 0 auto;
+  }
+
+  .game {
+    min-height: auto;
+    height: auto;
   }
 
   .other-players h3 {
@@ -1344,16 +1439,18 @@ body {
   /* Smaller cards in other players section on mobile */
   .player-cards .card,
   .player-cards .card-slot {
-    width: 32px;
-    height: 45px;
+    width: 32px !important;
+    height: 45px !important;
   }
 
-  .player-cards .card .rank {
-    font-size: 0.8rem;
+  .player-cards .card .card-rank,
+  .player-cards .card.card-small .card-rank {
+    font-size: 0.8rem !important;
   }
 
-  .player-cards .card.rank-two-digit .rank {
-    font-size: 0.64rem;
+  .player-cards .card.rank-two-digit .card-rank,
+  .player-cards .card.card-small.rank-two-digit .card-rank {
+    font-size: 0.64rem !important;
   }
 
   .turn-badge {
