@@ -358,6 +358,20 @@ body {
   display: flex;
   flex-direction: column;
   padding: 1rem 2rem 2rem;
+  transition: background-color 0.5s ease;
+}
+
+.game.your-action {
+  animation: bg-pulse 2s ease-in-out infinite;
+}
+
+@keyframes bg-pulse {
+  0%, 100% {
+    background-color: var(--bg-deep);
+  }
+  50% {
+    background-color: #1a1a2e;
+  }
 }
 
 .game-header {

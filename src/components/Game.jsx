@@ -168,8 +168,10 @@ export default function Game({
 
   const teamClass = privateState.team === 'red' ? 'team-red' : 'team-black';
 
+  const needsAction = (isMyTurn && !duelInProgress) || amBeingChallenged;
+
   return (
-    <div className="game">
+    <div className={`game ${needsAction ? 'your-action' : ''}`}>
       {/* Game Result Overlay */}
       {gameFinished && gameResult && (
         <div className="duel-overlay">
