@@ -89,13 +89,6 @@ export default function Game({
     .filter(([id]) => id !== playerId);
   const allPlayers = Object.entries(gameState.players);
 
-  // Reset game result visibility when new result comes in
-  useEffect(() => {
-    if (gameResult) {
-      setShowGameResult(true);
-    }
-  }, [gameResult]);
-
   // Timer countdown effect
   useEffect(() => {
     if (!gameState.turnTimer?.enabled || !gameState.turnTimer?.turnStartTime) {
@@ -124,6 +117,13 @@ export default function Game({
   const duelInProgress = !!gameState.duel;
   const gameFinished = gameState.phase === 'finished';
   const gameResult = gameState.gameResult;
+
+  // Reset game result visibility when new result comes in
+  useEffect(() => {
+    if (gameResult) {
+      setShowGameResult(true);
+    }
+  }, [gameResult]);
 
   const unrevealedIndices = privateState.unrevealedCardIndices || [];
 
