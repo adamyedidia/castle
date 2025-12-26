@@ -83,6 +83,7 @@ export default function Game({
   const [selectedLeaders, setSelectedLeaders] = useState([]);
   const [timeRemaining, setTimeRemaining] = useState(null);
   const [showGameResult, setShowGameResult] = useState(true);
+  const [lastDuelCards, setLastDuelCards] = useState(null); // { challengerId, challengerCardIndex, defenderId, defenderCardIndex }
 
   const myPlayer = gameState.players[playerId];
   const otherPlayers = Object.entries(gameState.players)
@@ -125,10 +126,28 @@ export default function Game({
     }
   }, [gameResult]);
 
+  // Track last duel cards for highlighting
+  useEffect(() => {
+    if (duelResult) {
+      setLastDuelCards({
+        challengerId: duelResult.challenger.id,
+        challengerCardIndex: duelResult.challenger.cardIndex,
+        defenderId: duelResult.defender.id,
+        defenderCardIndex: duelResult.defender.cardIndex
+      });
+    }
+  }, [duelResult]);
+
   const unrevealedIndices = privateState.unrevealedCardIndices || [];
 
   const isRevealed = (index) => {
     return myPlayer?.revealedCards?.includes(index);
+  };
+
+  const wasInLastDuel = (playerIdToCheck, cardIndex) => {
+    if (!lastDuelCards) return false;
+    return (lastDuelCards.challengerId === playerIdToCheck && lastDuelCards.challengerCardIndex === cardIndex) ||
+           (lastDuelCards.defenderId === playerIdToCheck && lastDuelCards.defenderCardIndex === cardIndex);
   };
 
   const handleSelectCard = (index) => {
@@ -186,7 +205,7 @@ export default function Game({
           <div className={`game-result-modal ${iWon ? 'won' : 'lost'}`}>
             <h2>{iWon ? '🎉 Victory!' : '💀 Defeat!'}</h2>
             <p className="result-subtitle">
-              {gameResult.callerName} called the leaders
+              <span className={gameState.players[gameResult.callerId]?.majorityColor ? `majority-${gameState.players[gameResult.callerId].majorityColor}` : ''}>{gameResult.callerName}</span> called the leaders
               {gameResult.correct ? ' correctly!' : ' incorrectly!'}
             </p>
 
@@ -349,7 +368,7 @@ export default function Game({
           </div>
         ) : (
           <div className="turn-alert waiting">
-            <span>Waiting for {currentTurnPlayer?.name}'s turn...</span>
+            <span>Waiting for <span className={currentTurnPlayer?.majorityColor ? `majority-${currentTurnPlayer.majorityColor}` : ''}>{currentTurnPlayer?.name}</span>'s turn...</span>
           </div>
         )}
       </div>
@@ -402,8 +421,10 @@ export default function Game({
                     const publicInfo = !isCardRevealed ? player.cardPublicInfo?.[i] : null;
                     const privatelyKnown = !isCardRevealed && privateState?.privatelyKnownCards?.[id]?.[i];
 
+                    const wasInDuel = wasInLastDuel(id, i);
+
                     return (
-                      <div key={i} className="card-slot">
+                      <div key={i} className={`card-slot ${wasInDuel ? 'last-duel' : ''}`}>
                         {privatelyKnown ? (
                           <Card
                             card={privatelyKnown}
@@ -442,11 +463,12 @@ export default function Game({
             const canSelect = !revealed && isMyTurn && !duelInProgress;
             const canRespond = !revealed && amBeingChallenged;
             const publicInfo = !revealed ? myPlayer?.cardPublicInfo?.[i] : null;
+            const wasInDuel = wasInLastDuel(playerId, i);
 
             return (
               <div
                 key={i}
-                className={`card-container ${isSoulCard ? 'soul-card' : ''} ${isSelected ? 'selected' : ''}`}
+                className={`card-container ${isSoulCard ? 'soul-card' : ''} ${isSelected ? 'selected' : ''} ${wasInDuel ? 'last-duel' : ''}`}
               >
                 {isSoulCard && <div className="soul-badge">Soul Card</div>}
                 <Card
@@ -485,7 +507,7 @@ export default function Game({
       {isMyTurn && !duelInProgress && selectedCardIndex !== null && selectedOpponentId && (
         <div className="challenge-action">
           <button onClick={handleChallenge} className="btn-challenge">
-            Challenge {gameState.players[selectedOpponentId]?.name}!
+            Challenge <span className={gameState.players[selectedOpponentId]?.majorityColor ? `majority-${gameState.players[selectedOpponentId].majorityColor}` : ''}>{gameState.players[selectedOpponentId]?.name}</span>!
           </button>
         </div>
       )}

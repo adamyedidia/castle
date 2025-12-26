@@ -833,6 +833,13 @@ body {
   transform: translateY(-8px);
 }
 
+/* Highlight cards from last duel */
+.card-container.last-duel .card,
+.card-slot.last-duel .card {
+  outline: 3px solid var(--accent-gold);
+  outline-offset: 2px;
+}
+
 .btn-select {
   padding: 0.5rem 1rem;
   border-radius: 6px;
