@@ -475,6 +475,15 @@ body {
   border: 1px solid var(--team-red);
 }
 
+/* Majority color tinting for player names */
+.majority-red {
+  color: #ff9999;
+}
+
+.majority-blue {
+  color: #99b3ff;
+}
+
 .team-badge.team-black {
   background: rgba(45, 55, 72, 0.5);
   color: #a0aec0;

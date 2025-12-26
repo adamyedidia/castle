@@ -417,6 +417,14 @@ function getPublicState() {
       card: player.cards ? player.cards[idx] : null
     }));
 
+    // Determine majority color from card backs
+    let majorityColor = null;
+    if (player.cards && player.cards.length > 0) {
+      const redCount = player.cards.filter(c => c.back === 'red').length;
+      const blueCount = player.cards.filter(c => c.back === 'blue').length;
+      majorityColor = redCount > blueCount ? 'red' : 'blue';
+    }
+
     players[id] = {
       name: player.name,
       cardCount: player.cards ? player.cards.length : 0,
@@ -426,7 +434,8 @@ function getPublicState() {
       cardPublicInfo: player.cardPublicInfo || [],
       connected: !!player.socketId,
       canBeChallenged: player.cards ? canBeChallenged(player) : false,
-      unrevealedCount: player.cards ? getUnrevealedCardIndices(player).length : 0
+      unrevealedCount: player.cards ? getUnrevealedCardIndices(player).length : 0,
+      majorityColor: majorityColor
     };
   }
 

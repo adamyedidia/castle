@@ -189,7 +189,7 @@ export default function Game({
                   <div className="revealed-player-header">
                     {player.isRedLeader && <span className="crown red-crown">👑</span>}
                     {player.isBlackLeader && <span className="crown black-crown">👑</span>}
-                    <span className="revealed-player-name">{player.name}</span>
+                    <span className={`revealed-player-name ${player.majorityColor ? `majority-${player.majorityColor}` : ''}`}>{player.name}</span>
                     <span className={`team-indicator ${player.team}`}>
                       {player.team === 'red' ? '♦' : '♠'}
                     </span>
@@ -237,7 +237,7 @@ export default function Game({
                     onClick={() => !isDisabled && toggleLeaderSelection(id)}
                     disabled={isDisabled}
                   >
-                    {player.name}
+                    <span className={player.majorityColor ? `majority-${player.majorityColor}` : ''}>{player.name}</span>
                     {isMe && ' (you)'}
                     {isDisabled && ' - cannot call self'}
                   </button>
@@ -270,15 +270,15 @@ export default function Game({
           <div className="duel-result">
             <h2>Duel!</h2>
             <div className="duel-participants">
-              <span>{gameState.players[duelResult.challenger.id]?.name || duelResult.challenger.name}</span>
+              <span className={gameState.players[duelResult.challenger.id]?.majorityColor ? `majority-${gameState.players[duelResult.challenger.id].majorityColor}` : ''}>{gameState.players[duelResult.challenger.id]?.name || duelResult.challenger.name}</span>
               <span className="vs">vs</span>
-              <span>{gameState.players[duelResult.defender.id]?.name || duelResult.defender.name}</span>
+              <span className={gameState.players[duelResult.defender.id]?.majorityColor ? `majority-${gameState.players[duelResult.defender.id].majorityColor}` : ''}>{gameState.players[duelResult.defender.id]?.name || duelResult.defender.name}</span>
             </div>
             {duelResult.result === 'tie' ? (
               <p className="result-tie">It's a tie! No cards revealed.</p>
             ) : (
               <div className="result-winner">
-                <p>{gameState.players[duelResult.loser]?.name || 'Player'} loses!</p>
+                <p><span className={gameState.players[duelResult.loser]?.majorityColor ? `majority-${gameState.players[duelResult.loser].majorityColor}` : ''}>{gameState.players[duelResult.loser]?.name || 'Player'}</span> loses!</p>
                 <div className="revealed-card-display">
                   <Card card={duelResult.revealedCard} revealed={true} />
                 </div>
@@ -292,7 +292,7 @@ export default function Game({
       <header className="game-header">
         <h1>Castle</h1>
         <div className="player-info">
-          <span className="player-name">{playerName}</span>
+          <span className={`player-name ${myPlayer?.majorityColor ? `majority-${myPlayer.majorityColor}` : ''}`}>{playerName}</span>
           <span className={`team-badge ${teamClass}`}>
             Team {privateState.team === 'red' ? 'Red ♦' : 'Black ♠'}
           </span>
@@ -323,7 +323,7 @@ export default function Game({
         {amBeingChallenged ? (
           <div className="turn-alert challenge-alert">
             <span className="alert-icon">⚔️</span>
-            <span>{gameState.duel.challengerName} is challenging you! Select a card to defend.</span>
+            <span><span className={gameState.players[gameState.duel.challengerId]?.majorityColor ? `majority-${gameState.players[gameState.duel.challengerId].majorityColor}` : ''}>{gameState.duel.challengerName}</span> is challenging you! Select a card to defend.</span>
           </div>
         ) : isMyTurn && !duelInProgress ? (
           <div className="turn-alert your-turn">
@@ -332,7 +332,7 @@ export default function Game({
           </div>
         ) : duelInProgress ? (
           <div className="turn-alert waiting">
-            <span>Waiting for {gameState.duel.defenderName} to respond...</span>
+            <span>Waiting for <span className={gameState.players[gameState.duel.defenderId]?.majorityColor ? `majority-${gameState.players[gameState.duel.defenderId].majorityColor}` : ''}>{gameState.duel.defenderName}</span> to respond...</span>
           </div>
         ) : (
           <div className="turn-alert waiting">
@@ -349,7 +349,7 @@ export default function Game({
 
         return (
           <div className="challenge-card-display">
-            <p>{gameState.duel.challengerName}'s card:</p>
+            <p><span className={gameState.players[gameState.duel.challengerId]?.majorityColor ? `majority-${gameState.players[gameState.duel.challengerId].majorityColor}` : ''}>{gameState.duel.challengerName}</span>'s card:</p>
             <div className="challenge-card-with-info">
               {privatelyKnownCard ? (
                 <Card card={privatelyKnownCard} revealed={true} privateKnowledge />
@@ -378,7 +378,7 @@ export default function Game({
                 onClick={() => canSelect && handleSelectOpponent(id)}
               >
                 <div className="player-header">
-                  <span className="name">{player.name}</span>
+                  <span className={`name ${player.majorityColor ? `majority-${player.majorityColor}` : ''}`}>{player.name}</span>
                   {!player.canBeChallenged && <span className="all-revealed">All revealed</span>}
                   {gameState.currentTurnPlayerId === id && <span className="turn-badge">Their turn</span>}
                 </div>
@@ -480,14 +480,17 @@ export default function Game({
       {/* Turn Order Display */}
       <div className="turn-order">
         <span className="turn-order-label">Turn order:</span>
-        {gameState.turnOrder.map((id, i) => (
-          <span
-            key={id}
-            className={`turn-order-player ${id === playerId ? 'you' : ''} ${id === gameState.currentTurnPlayerId ? 'current' : ''}`}
-          >
-            {gameState.players[id]?.name}{id === playerId ? ' (you)' : ''}
-          </span>
-        ))}
+        {gameState.turnOrder.map((id, i) => {
+          const p = gameState.players[id];
+          return (
+            <span
+              key={id}
+              className={`turn-order-player ${id === playerId ? 'you' : ''} ${id === gameState.currentTurnPlayerId ? 'current' : ''} ${p?.majorityColor ? `majority-${p.majorityColor}` : ''}`}
+            >
+              {p?.name}{id === playerId ? ' (you)' : ''}
+            </span>
+          );
+        })}
       </div>
     </div>
   );
