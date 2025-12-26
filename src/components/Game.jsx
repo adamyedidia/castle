@@ -82,11 +82,19 @@ export default function Game({
   const [showCallLeaders, setShowCallLeaders] = useState(false);
   const [selectedLeaders, setSelectedLeaders] = useState([]);
   const [timeRemaining, setTimeRemaining] = useState(null);
+  const [showGameResult, setShowGameResult] = useState(true);
 
   const myPlayer = gameState.players[playerId];
   const otherPlayers = Object.entries(gameState.players)
     .filter(([id]) => id !== playerId);
   const allPlayers = Object.entries(gameState.players);
+
+  // Reset game result visibility when new result comes in
+  useEffect(() => {
+    if (gameResult) {
+      setShowGameResult(true);
+    }
+  }, [gameResult]);
 
   // Timer countdown effect
   useEffect(() => {
@@ -173,7 +181,7 @@ export default function Game({
   return (
     <div className={`game ${needsAction ? 'your-action' : ''}`}>
       {/* Game Result Overlay */}
-      {gameFinished && gameResult && (
+      {gameFinished && gameResult && showGameResult && (
         <div className="duel-overlay">
           <div className={`game-result-modal ${iWon ? 'won' : 'lost'}`}>
             <h2>{iWon ? '🎉 Victory!' : '💀 Defeat!'}</h2>
@@ -210,9 +218,14 @@ export default function Game({
               ))}
             </div>
 
-            <button onClick={onEndGame} className="btn-primary">
-              Return to Lobby
-            </button>
+            <div className="game-result-buttons">
+              <button onClick={() => setShowGameResult(false)} className="btn-secondary">
+                Dismiss
+              </button>
+              <button onClick={onEndGame} className="btn-primary">
+                Return to Lobby
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -504,6 +504,88 @@ function broadcastState() {
   }
 }
 
+function resolveDuelAndAdvance() {
+  const duel = gameState.duel;
+  const challenger = gameState.players[duel.challengerId];
+  const defender = gameState.players[duel.defenderId];
+
+  const card1 = challenger.cards[duel.challengerCardIndex];
+  const card2 = defender.cards[duel.defenderCardIndex];
+
+  const result = resolveDuel(card1, card2);
+
+  let duelResult = {
+    challenger: { id: duel.challengerId, name: challenger.name, cardIndex: duel.challengerCardIndex },
+    defender: { id: duel.defenderId, name: defender.name, cardIndex: duel.defenderCardIndex },
+    result
+  };
+
+  // Track public info for the winning card
+  const faceCards = ['J', 'Q', 'K', 'A'];
+
+  if (result === 'player1') {
+    // Challenger (card1) won, update card1's public info
+    const info = challenger.cardPublicInfo[duel.challengerCardIndex];
+    if (card2.rank === 'joker') {
+      // Beat a joker means this card is J, Q, K, or A
+      info.defeatedJoker = true;
+    } else {
+      // Beat a non-joker, record the rank
+      if (!info.defeatedRanks.includes(card2.rank)) {
+        info.defeatedRanks.push(card2.rank);
+      }
+      // If we beat a non-face card, we can't be a joker
+      if (!faceCards.includes(card2.rank)) {
+        info.notJoker = true;
+      }
+    }
+
+    defender.revealedCards.push(duel.defenderCardIndex);
+    duelResult.loser = duel.defenderId;
+    duelResult.revealedCard = card2;
+  } else if (result === 'player2') {
+    // Defender (card2) won, update card2's public info
+    const info = defender.cardPublicInfo[duel.defenderCardIndex];
+    if (card1.rank === 'joker') {
+      // Beat a joker means this card is J, Q, K, or A
+      info.defeatedJoker = true;
+    } else {
+      // Beat a non-joker, record the rank
+      if (!info.defeatedRanks.includes(card1.rank)) {
+        info.defeatedRanks.push(card1.rank);
+      }
+      // If we beat a non-face card, we can't be a joker
+      if (!faceCards.includes(card1.rank)) {
+        info.notJoker = true;
+      }
+    }
+
+    challenger.revealedCards.push(duel.challengerCardIndex);
+    duelResult.loser = duel.challengerId;
+    duelResult.revealedCard = card1;
+  }
+  // Note: ties don't reveal any public info
+
+  // Both players now privately know each other's cards from this duel
+  // Challenger learns defender's card
+  if (!challenger.privatelyKnownCards[duel.defenderId]) {
+    challenger.privatelyKnownCards[duel.defenderId] = {};
+  }
+  challenger.privatelyKnownCards[duel.defenderId][duel.defenderCardIndex] = { ...card2 };
+
+  // Defender learns challenger's card
+  if (!defender.privatelyKnownCards[duel.challengerId]) {
+    defender.privatelyKnownCards[duel.challengerId] = {};
+  }
+  defender.privatelyKnownCards[duel.challengerId][duel.challengerCardIndex] = { ...card1 };
+
+  io.emit('duelResult', duelResult);
+
+  // Advance turn
+  advanceToNextTurn();
+  broadcastState();
+}
+
 io.on('connection', (socket) => {
   console.log('Socket connected:', socket.id);
   socket.emit('gameState', getPublicState());
@@ -705,88 +787,6 @@ io.on('connection', (socket) => {
 
     resolveDuelAndAdvance();
   });
-
-  function resolveDuelAndAdvance() {
-    const duel = gameState.duel;
-    const challenger = gameState.players[duel.challengerId];
-    const defender = gameState.players[duel.defenderId];
-
-    const card1 = challenger.cards[duel.challengerCardIndex];
-    const card2 = defender.cards[duel.defenderCardIndex];
-
-    const result = resolveDuel(card1, card2);
-
-    let duelResult = {
-      challenger: { id: duel.challengerId, name: challenger.name, cardIndex: duel.challengerCardIndex },
-      defender: { id: duel.defenderId, name: defender.name, cardIndex: duel.defenderCardIndex },
-      result
-    };
-
-    // Track public info for the winning card
-    const faceCards = ['J', 'Q', 'K', 'A'];
-
-    if (result === 'player1') {
-      // Challenger (card1) won, update card1's public info
-      const info = challenger.cardPublicInfo[duel.challengerCardIndex];
-      if (card2.rank === 'joker') {
-        // Beat a joker means this card is J, Q, K, or A
-        info.defeatedJoker = true;
-      } else {
-        // Beat a non-joker, record the rank
-        if (!info.defeatedRanks.includes(card2.rank)) {
-          info.defeatedRanks.push(card2.rank);
-        }
-        // If we beat a non-face card, we can't be a joker
-        if (!faceCards.includes(card2.rank)) {
-          info.notJoker = true;
-        }
-      }
-
-      defender.revealedCards.push(duel.defenderCardIndex);
-      duelResult.loser = duel.defenderId;
-      duelResult.revealedCard = card2;
-    } else if (result === 'player2') {
-      // Defender (card2) won, update card2's public info
-      const info = defender.cardPublicInfo[duel.defenderCardIndex];
-      if (card1.rank === 'joker') {
-        // Beat a joker means this card is J, Q, K, or A
-        info.defeatedJoker = true;
-      } else {
-        // Beat a non-joker, record the rank
-        if (!info.defeatedRanks.includes(card1.rank)) {
-          info.defeatedRanks.push(card1.rank);
-        }
-        // If we beat a non-face card, we can't be a joker
-        if (!faceCards.includes(card1.rank)) {
-          info.notJoker = true;
-        }
-      }
-
-      challenger.revealedCards.push(duel.challengerCardIndex);
-      duelResult.loser = duel.challengerId;
-      duelResult.revealedCard = card1;
-    }
-    // Note: ties don't reveal any public info
-
-    // Both players now privately know each other's cards from this duel
-    // Challenger learns defender's card
-    if (!challenger.privatelyKnownCards[duel.defenderId]) {
-      challenger.privatelyKnownCards[duel.defenderId] = {};
-    }
-    challenger.privatelyKnownCards[duel.defenderId][duel.defenderCardIndex] = { ...card2 };
-
-    // Defender learns challenger's card
-    if (!defender.privatelyKnownCards[duel.challengerId]) {
-      defender.privatelyKnownCards[duel.challengerId] = {};
-    }
-    defender.privatelyKnownCards[duel.challengerId][duel.challengerCardIndex] = { ...card1 };
-
-    io.emit('duelResult', duelResult);
-
-    // Advance turn
-    advanceToNextTurn();
-    broadcastState();
-  }
 
   // Call the team leaders
   socket.on('callLeaders', (guessedLeaderIds) => {
