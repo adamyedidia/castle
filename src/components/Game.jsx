@@ -205,8 +205,14 @@ export default function Game({
           <div className={`game-result-modal ${iWon ? 'won' : 'lost'}`}>
             <h2>{iWon ? '🎉 Victory!' : '💀 Defeat!'}</h2>
             <p className="result-subtitle">
-              <span className={gameState.players[gameResult.callerId]?.majorityColor ? `majority-${gameState.players[gameResult.callerId].majorityColor}` : ''}>{gameResult.callerName}</span> called the leaders
-              {gameResult.correct ? ' correctly!' : ' incorrectly!'}
+              <span className={gameState.players[gameResult.callerId]?.majorityColor ? `majority-${gameState.players[gameResult.callerId].majorityColor}` : ''}>{gameResult.callerName}</span> called{' '}
+              {gameResult.guessedLeaders?.map((leader, i) => (
+                <span key={leader.id}>
+                  {i > 0 && ' and '}
+                  <span className={gameState.players[leader.id]?.majorityColor ? `majority-${gameState.players[leader.id].majorityColor}` : ''}>{leader.name}</span>
+                </span>
+              ))}
+              {' '}as leaders — {gameResult.correct ? 'correctly!' : 'incorrectly!'}
             </p>
 
             {/* All Players Revealed */}
