@@ -833,6 +833,15 @@ body {
   transform: translateY(-8px);
 }
 
+.card-container.clickable {
+  cursor: pointer;
+}
+
+.card-container.clickable:hover .card {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
 /* Highlight cards from last duel */
 .card-container.last-duel .card,
 .card-slot.last-duel .card {
@@ -889,6 +898,64 @@ body {
 .btn-challenge:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 30px rgba(212, 175, 55, 0.4);
+}
+
+/* Quick Call Leaders */
+.quick-call-leaders {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.btn-call-leaders-big {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  border: none;
+  border-radius: 10px;
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  font-family: inherit;
+  font-weight: 700;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-call-leaders-big:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(99, 102, 241, 0.4);
+}
+
+.btn-clear-selection {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-clear-selection:hover {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+}
+
+/* Selected as leader styling */
+.other-player.selected-leader {
+  border-color: #6366f1;
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.other-player.leader-selectable {
+  cursor: pointer;
+}
+
+.other-player.leader-selectable:hover {
+  border-color: #6366f1;
+  opacity: 0.9;
 }
 
 /* Turn Order Display */

@@ -408,12 +408,20 @@ export default function Game({
             const isSelected = selectedOpponentId === id;
             const canSelect = isMyTurn && !duelInProgress && player.canBeChallenged;
             const isCurrentChallenger = gameState.duel?.challengerId === id;
+            const isSelectedAsLeader = selectedLeaders.includes(id);
+            const canSelectAsLeader = !canSelect; // Can select as leader when can't select as opponent
 
             return (
               <div
                 key={id}
-                className={`other-player ${isSelected ? 'selected' : ''} ${canSelect ? 'selectable' : ''} ${isCurrentChallenger ? 'challenger' : ''}`}
-                onClick={() => canSelect && handleSelectOpponent(id)}
+                className={`other-player ${isSelected ? 'selected' : ''} ${canSelect ? 'selectable' : ''} ${isCurrentChallenger ? 'challenger' : ''} ${isSelectedAsLeader ? 'selected-leader' : ''} ${canSelectAsLeader ? 'leader-selectable' : ''}`}
+                onClick={() => {
+                  if (canSelect) {
+                    handleSelectOpponent(id);
+                  } else {
+                    toggleLeaderSelection(id);
+                  }
+                }}
               >
                 <div className="player-header">
                   <span className={`name ${player.majorityColor ? `majority-${player.majorityColor}` : ''}`}>{player.name}</span>
@@ -471,10 +479,16 @@ export default function Game({
             const publicInfo = !revealed ? myPlayer?.cardPublicInfo?.[i] : null;
             const wasInDuel = wasInLastDuel(playerId, i);
 
+            const canClickCard = (canSelect || canRespond);
+
             return (
               <div
                 key={i}
-                className={`card-container ${isSoulCard ? 'soul-card' : ''} ${isSelected ? 'selected' : ''} ${wasInDuel ? 'last-duel' : ''}`}
+                className={`card-container ${isSoulCard ? 'soul-card' : ''} ${isSelected ? 'selected' : ''} ${wasInDuel ? 'last-duel' : ''} ${canClickCard ? 'clickable' : ''}`}
+                onClick={() => {
+                  if (canSelect) handleSelectCard(i);
+                  else if (canRespond) handleRespond(i);
+                }}
               >
                 {isSoulCard && <div className="soul-badge">Soul Card</div>}
                 <Card
@@ -488,14 +502,14 @@ export default function Game({
                   <div className="card-status revealed-status">Revealed</div>
                 ) : amBeingChallenged ? (
                   <button
-                    onClick={() => handleRespond(i)}
+                    onClick={(e) => { e.stopPropagation(); handleRespond(i); }}
                     className="btn-submit"
                   >
                     Defend with this
                   </button>
                 ) : isMyTurn && !duelInProgress ? (
                   <button
-                    onClick={() => handleSelectCard(i)}
+                    onClick={(e) => { e.stopPropagation(); handleSelectCard(i); }}
                     className={`btn-select ${isSelected ? 'selected' : ''}`}
                   >
                     {isSelected ? 'Selected ✓' : 'Select'}
@@ -514,6 +528,25 @@ export default function Game({
         <div className="challenge-action">
           <button onClick={handleChallenge} className="btn-challenge">
             Challenge <span className={gameState.players[selectedOpponentId]?.majorityColor ? `majority-${gameState.players[selectedOpponentId].majorityColor}` : ''}>{gameState.players[selectedOpponentId]?.name}</span>!
+          </button>
+        </div>
+      )}
+
+      {/* Quick Call Leaders Button (when 2 players selected) */}
+      {selectedLeaders.length === 2 && !gameFinished && (
+        <div className="quick-call-leaders">
+          <button onClick={handleCallLeaders} className="btn-call-leaders-big">
+            📢 Call{' '}
+            {selectedLeaders.map((id, i) => (
+              <span key={id}>
+                {i > 0 && ' & '}
+                <span className={gameState.players[id]?.majorityColor ? `majority-${gameState.players[id].majorityColor}` : ''}>{gameState.players[id]?.name}</span>
+              </span>
+            ))}
+            {' '}as Leaders!
+          </button>
+          <button onClick={() => setSelectedLeaders([])} className="btn-clear-selection">
+            Clear
           </button>
         </div>
       )}
