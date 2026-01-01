@@ -1326,10 +1326,17 @@ body {
 
 /* Private knowledge - cards you've seen in duels but aren't publicly revealed */
 .card.private-knowledge {
-  opacity: 0.5;
-  filter: saturate(0.4);
+  opacity: 0.7;
+  /* Use brightness reduction instead of desaturation to preserve color distinction */
+  filter: brightness(0.85) contrast(0.9);
   border-style: dashed;
+  border-width: 2px;
   position: relative;
+}
+
+/* Tint the card background to hint at private knowledge without losing color */
+.card.private-knowledge.card-front {
+  background: linear-gradient(135deg, #e8e8e8 0%, #d8d8d0 100%);
 }
 
 .card.private-knowledge::after {
@@ -1338,7 +1345,16 @@ body {
   top: 2px;
   right: 2px;
   font-size: 0.6rem;
-  opacity: 0.7;
+  opacity: 0.8;
+}
+
+/* Boost the rank colors in private-knowledge cards to maintain distinction */
+.card.private-knowledge .card-rank.rank-red {
+  color: #ef4444; /* Slightly brighter red to compensate for dimming */
+}
+
+.card.private-knowledge .card-rank.rank-black {
+  color: #3b82f6; /* Brighter blue to compensate for dimming and stay distinct */
 }
 
 /* Card Back */
@@ -1350,13 +1366,13 @@ body {
 }
 
 .card-back.back-red {
-  background: linear-gradient(135deg, #8b1538 0%, #c41e3a 50%, #8b1538 100%);
-  border-color: #6b0f28;
+  background: linear-gradient(135deg, #991b1b 0%, #dc2626 50%, #991b1b 100%);
+  border-color: #7f1d1d;
 }
 
 .card-back.back-blue {
-  background: linear-gradient(135deg, #1a365d 0%, #2c5282 50%, #1a365d 100%);
-  border-color: #142850;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #1e3a8a 100%);
+  border-color: #1e40af;
 }
 
 .back-pattern {
@@ -1414,11 +1430,11 @@ body {
 }
 
 .card-rank.rank-red {
-  color: #c41e3a;
+  color: #dc2626; /* Brighter, more saturated red */
 }
 
 .card-rank.rank-black {
-  color: #2c5282;
+  color: #1e40af; /* Deeper, more saturated blue - clearly distinct from red */
 }
 
 .card-rank.rank-joker {
