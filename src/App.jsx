@@ -114,6 +114,14 @@ export default function App() {
     socket.emit('callLeaders', leaderIds);
   };
 
+  const updatePendingSelection = (cardIndex, opponentId) => {
+    socket.emit('updatePendingSelection', { cardIndex, opponentId });
+  };
+
+  const dismissDuelResult = () => {
+    setDuelResult(null);
+  };
+
   const kickPlayer = (targetPlayerId) => {
     socket.emit('kickPlayer', targetPlayerId);
   };
@@ -157,7 +165,9 @@ export default function App() {
       onRespondToChallenge={respondToChallenge}
       onCallLeaders={callLeaders}
       onEndGame={endGame}
+      onUpdatePendingSelection={updatePendingSelection}
       duelResult={duelResult}
+      onDismissDuelResult={dismissDuelResult}
     />
   );
 }

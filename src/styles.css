@@ -603,12 +603,16 @@ body {
 .player-cards {
   display: flex;
   gap: 0.5rem;
+  /* Align cards at top so annotations can extend downward without overlap */
+  align-items: flex-start;
 }
 
 .card-slot {
   display: flex;
   flex-direction: column;
   align-items: center;
+  /* Allow slot to grow to fit public info annotations */
+  height: auto;
 }
 
 /* Public info markers beneath unrevealed cards */
@@ -645,6 +649,10 @@ body {
 
 .public-info-marker.not-joker s {
   text-decoration: line-through;
+}
+
+.public-info-marker.tie-symbol {
+  color: #c084fc; /* Purple for tie symbols */
 }
 
 /* Your Hand Section */
@@ -1530,6 +1538,13 @@ body {
   justify-content: center;
 }
 
+.dismiss-hint {
+  margin-top: 1.5rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 600px) {
   .lobby-card {
@@ -1606,13 +1621,22 @@ body {
 
   .player-cards {
     gap: 0.25rem;
+    /* Allow cards to align at top so public info doesn't overlap */
+    align-items: flex-start;
   }
 
   /* Smaller cards in other players section on mobile */
-  .player-cards .card,
-  .player-cards .card-slot {
+  .player-cards .card {
     width: 32px !important;
     height: 45px !important;
+    flex-shrink: 0;
+  }
+
+  /* Card slot should NOT have fixed height - let it grow to fit public info */
+  .player-cards .card-slot {
+    width: 32px !important;
+    height: auto !important; /* Allow slot to grow for annotations */
+    min-height: 45px;
   }
 
   .player-cards .card .card-rank,

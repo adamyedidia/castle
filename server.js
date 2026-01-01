@@ -28,11 +28,19 @@ let gameState = {
     seconds: 15,        // Default timer duration
     turnStartTime: null, // When the current turn/action started
     timerId: null       // Server-side timer reference
-  }
+  },
+  tieCounter: 0     // Counter for tie annotations (α, β, γ, etc.)
 };
+
+// Greek letters for tie annotations
+const TIE_SYMBOLS = ['α', 'β', 'γ', 'δ', 'ε', 'ζ', 'η', 'θ', 'ι', 'κ', 'λ', 'μ', 'ν', 'ξ', 'ο', 'π', 'ρ', 'σ', 'τ', 'υ', 'φ', 'χ', 'ψ', 'ω'];
 
 // Map socket IDs to player IDs
 const socketToPlayer = {};
+
+// Track pending selections for each player (used when timer expires)
+// Structure: { playerId: { cardIndex: number|null, opponentId: string|null } }
+const pendingSelections = {};
 
 // Card ranks for comparison (higher = better)
 const RANK_ORDER = ['joker', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
@@ -318,9 +326,26 @@ function handleTimerExpired() {
     if (defender) {
       const unrevealedIndices = getUnrevealedCardIndices(defender);
       if (unrevealedIndices.length > 0) {
-        const randomIndex = unrevealedIndices[Math.floor(Math.random() * unrevealedIndices.length)];
-        gameState.duel.defenderCardIndex = randomIndex;
-        console.log(`Timer expired: ${defender.name} auto-responds with card ${randomIndex}`);
+        // Check if defender has a pending card selection
+        const pending = pendingSelections[defenderId];
+        let selectedIndex;
+
+        if (pending?.cardIndex !== null &&
+            pending?.cardIndex !== undefined &&
+            unrevealedIndices.includes(pending.cardIndex)) {
+          // Use the pending selection
+          selectedIndex = pending.cardIndex;
+          console.log(`Timer expired: ${defender.name} auto-responds with SELECTED card ${selectedIndex}`);
+        } else {
+          // Fall back to random
+          selectedIndex = unrevealedIndices[Math.floor(Math.random() * unrevealedIndices.length)];
+          console.log(`Timer expired: ${defender.name} auto-responds with RANDOM card ${selectedIndex}`);
+        }
+
+        // Clear pending selection
+        delete pendingSelections[defenderId];
+
+        gameState.duel.defenderCardIndex = selectedIndex;
         resolveDuelAndAdvance();
         return;
       }
@@ -337,24 +362,45 @@ function handleTimerExpired() {
         .map(([id]) => id);
 
       if (validOpponents.length > 0) {
-        const randomOpponentId = validOpponents[Math.floor(Math.random() * validOpponents.length)];
         const unrevealedIndices = getUnrevealedCardIndices(currentPlayer);
 
         if (unrevealedIndices.length > 0) {
-          const randomCardIndex = unrevealedIndices[Math.floor(Math.random() * unrevealedIndices.length)];
+          // Check if player has a valid pending selection
+          const pending = pendingSelections[currentPlayerId];
+          let selectedCardIndex;
+          let selectedOpponentId;
+
+          const hasPendingCard = pending?.cardIndex !== null &&
+                                  pending?.cardIndex !== undefined &&
+                                  unrevealedIndices.includes(pending.cardIndex);
+          const hasPendingOpponent = pending?.opponentId &&
+                                      validOpponents.includes(pending.opponentId);
+
+          if (hasPendingCard && hasPendingOpponent) {
+            // Use the pending selection - both card and opponent are valid
+            selectedCardIndex = pending.cardIndex;
+            selectedOpponentId = pending.opponentId;
+            console.log(`Timer expired: ${currentPlayer.name} auto-challenges ${gameState.players[selectedOpponentId].name} with SELECTED card ${selectedCardIndex}`);
+          } else {
+            // Fall back to random selection
+            selectedCardIndex = unrevealedIndices[Math.floor(Math.random() * unrevealedIndices.length)];
+            selectedOpponentId = validOpponents[Math.floor(Math.random() * validOpponents.length)];
+            console.log(`Timer expired: ${currentPlayer.name} auto-challenges ${gameState.players[selectedOpponentId].name} with RANDOM card ${selectedCardIndex}`);
+          }
+
+          // Clear pending selection
+          delete pendingSelections[currentPlayerId];
 
           // Start the duel
           gameState.duel = {
             challengerId: currentPlayerId,
-            challengerCardIndex: randomCardIndex,
-            defenderId: randomOpponentId,
+            challengerCardIndex: selectedCardIndex,
+            defenderId: selectedOpponentId,
             defenderCardIndex: null
           };
 
-          console.log(`Timer expired: ${currentPlayer.name} auto-challenges ${gameState.players[randomOpponentId].name} with card ${randomCardIndex}`);
-
           // Check if defender has only one card
-          const defender = gameState.players[randomOpponentId];
+          const defender = gameState.players[selectedOpponentId];
           const defenderUnrevealed = getUnrevealedCardIndices(defender);
           if (defenderUnrevealed.length === 1) {
             gameState.duel.defenderCardIndex = defenderUnrevealed[0];
@@ -563,8 +609,21 @@ function resolveDuelAndAdvance() {
     challenger.revealedCards.push(duel.challengerCardIndex);
     duelResult.loser = duel.challengerId;
     duelResult.revealedCard = card1;
+  } else if (result === 'tie') {
+    // Assign tie symbol to both cards
+    const tieSymbol = TIE_SYMBOLS[gameState.tieCounter % TIE_SYMBOLS.length];
+    gameState.tieCounter++;
+
+    // Add tie symbol to challenger's card
+    const challengerInfo = challenger.cardPublicInfo[duel.challengerCardIndex];
+    challengerInfo.tieSymbols.push(tieSymbol);
+
+    // Add tie symbol to defender's card
+    const defenderInfo = defender.cardPublicInfo[duel.defenderCardIndex];
+    defenderInfo.tieSymbols.push(tieSymbol);
+
+    console.log(`Tie! Both cards get symbol: =${tieSymbol}`);
   }
-  // Note: ties don't reveal any public info
 
   // Both players now privately know each other's cards from this duel
   // Challenger learns defender's card
@@ -676,7 +735,8 @@ io.on('connection', (socket) => {
       gameState.players[playerId].cardPublicInfo = hands[playerId].map(() => ({
         defeatedRanks: [],    // Ranks this card has beaten (means this card is > those ranks)
         defeatedJoker: false, // If true, this card beat a joker (means it's J, Q, K, or A)
-        notJoker: false       // If true, this card beat a non-face card (means it's NOT a joker)
+        notJoker: false,      // If true, this card beat a non-face card (means it's NOT a joker)
+        tieSymbols: []        // Array of tie symbols (e.g., ['α', 'β']) if this card tied with others
       }));
       // Track cards this player has privately seen (from duels)
       // Structure: { opponentId: { cardIndex: cardData, ... }, ... }
@@ -688,6 +748,7 @@ io.on('connection', (socket) => {
     gameState.currentTurnIndex = 0;
     gameState.phase = 'playing';
     gameState.duel = null;
+    gameState.tieCounter = 0; // Reset tie counter for new game
 
     console.log('Game started! Turn order:', gameState.turnOrder.map(id => gameState.players[id].name));
 
@@ -697,10 +758,24 @@ io.on('connection', (socket) => {
     broadcastState();
   });
 
+  // Update pending selection (used when timer expires)
+  socket.on('updatePendingSelection', ({ cardIndex, opponentId }) => {
+    const playerId = getPlayerId(socket);
+    if (!playerId) return;
+
+    pendingSelections[playerId] = {
+      cardIndex: cardIndex ?? null,
+      opponentId: opponentId ?? null
+    };
+  });
+
   // Challenger selects a card and a player to challenge
   socket.on('challenge', ({ cardIndex, defenderId }) => {
     const playerId = getPlayerId(socket);
     const player = gameState.players[playerId];
+
+    // Clear pending selection since they're submitting
+    delete pendingSelections[playerId];
 
     if (!player || gameState.phase !== 'playing') return;
 

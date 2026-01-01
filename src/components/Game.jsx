@@ -50,6 +50,17 @@ function CardPublicInfo({ info }) {
     );
   }
 
+  // Show tie symbols (e.g., =α, =β)
+  if (info.tieSymbols && info.tieSymbols.length > 0) {
+    info.tieSymbols.forEach((symbol, index) => {
+      markers.push(
+        <span key={`tie-${index}`} className="public-info-marker tie-symbol">
+          ={symbol}
+        </span>
+      );
+    });
+  }
+
   if (markers.length === 0) return null;
 
   return <div className="card-public-info">{markers}</div>;
@@ -75,7 +86,9 @@ export default function Game({
   onRespondToChallenge,
   onCallLeaders,
   onEndGame,
-  duelResult
+  onUpdatePendingSelection,
+  duelResult,
+  onDismissDuelResult
 }) {
   const [selectedCardIndex, setSelectedCardIndex] = useState(null);
   const [selectedOpponentId, setSelectedOpponentId] = useState(null);
@@ -87,6 +100,8 @@ export default function Game({
 
   // Ref for the hand section - used to ensure visibility on mobile
   const handRef = React.useRef(null);
+  // Ref for the challenge button - scroll into view when it appears
+  const challengeButtonRef = React.useRef(null);
 
   const myPlayer = gameState.players[playerId];
   const otherPlayers = Object.entries(gameState.players)
@@ -155,6 +170,25 @@ export default function Game({
       return () => clearTimeout(timer);
     }
   }, [gameState.currentTurnPlayerId, gameState.duel, playerId]);
+
+  // Send pending selection updates to server (used when timer expires)
+  useEffect(() => {
+    if (onUpdatePendingSelection) {
+      onUpdatePendingSelection(selectedCardIndex, selectedOpponentId);
+    }
+  }, [selectedCardIndex, selectedOpponentId, onUpdatePendingSelection]);
+
+  // Scroll challenge button into view when both card and opponent are selected
+  // This ensures mobile users can see the submit button
+  useEffect(() => {
+    if (selectedCardIndex !== null && selectedOpponentId && challengeButtonRef.current) {
+      // Small delay to let the button render
+      const timer = setTimeout(() => {
+        challengeButtonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedCardIndex, selectedOpponentId]);
 
   const unrevealedIndices = privateState.unrevealedCardIndices || [];
 
@@ -322,7 +356,7 @@ export default function Game({
 
       {/* Duel Result Overlay */}
       {duelResult && !gameFinished && (
-        <div className="duel-overlay">
+        <div className="duel-overlay" onClick={onDismissDuelResult} style={{ cursor: 'pointer' }}>
           <div className="duel-result">
             <h2>Duel!</h2>
             <div className="duel-participants">
@@ -340,6 +374,7 @@ export default function Game({
                 </div>
               </div>
             )}
+            <p className="dismiss-hint">Tap anywhere to dismiss</p>
           </div>
         </div>
       )}
@@ -412,7 +447,8 @@ export default function Game({
               ) : (
                 <PublicCard back={gameState.duel.challengerCardBack} />
               )}
-              {!privatelyKnownCard && <CardPublicInfo info={gameState.duel.challengerCardPublicInfo} />}
+              {/* Always show public info - even if you privately know the card */}
+              <CardPublicInfo info={gameState.duel.challengerCardPublicInfo} />
             </div>
           </div>
         );
@@ -543,7 +579,7 @@ export default function Game({
 
       {/* Challenge Button */}
       {isMyTurn && !duelInProgress && selectedCardIndex !== null && selectedOpponentId && (
-        <div className="challenge-action">
+        <div className="challenge-action" ref={challengeButtonRef}>
           <button onClick={handleChallenge} className="btn-challenge">
             Challenge <span className={gameState.players[selectedOpponentId]?.majorityColor ? `majority-${gameState.players[selectedOpponentId].majorityColor}` : ''}>{gameState.players[selectedOpponentId]?.name}</span>!
           </button>
