@@ -23,6 +23,15 @@
   padding: 0;
 }
 
+/* Guarantee scrollability on all devices - critical for mobile */
+html, body {
+  overflow-x: hidden;
+  overflow-y: auto !important; /* !important to prevent any override */
+  -webkit-overflow-scrolling: touch;
+  /* Prevent iOS rubber-band effect from hiding content */
+  overscroll-behavior-y: contain;
+}
+
 body {
   font-family: 'Crimson Pro', Georgia, serif;
   background: var(--bg-deep);
@@ -31,7 +40,11 @@ body {
     radial-gradient(ellipse at bottom right, rgba(196, 30, 58, 0.03) 0%, transparent 50%);
   color: var(--text-primary);
   min-height: 100vh;
+  min-height: 100dvh; /* Dynamic viewport height - properly handles mobile toolbars */
   line-height: 1.6;
+  /* Ensure content is always scrollable on mobile */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ===== LOBBY ===== */
@@ -381,11 +394,14 @@ body {
 
 /* ===== GAME ===== */
 .game {
-  min-height: 100vh;
+  /* Use auto height - content determines size, allowing natural scrolling */
+  min-height: auto;
   display: flex;
   flex-direction: column;
   padding: 1rem 2rem 2rem;
   transition: background-color 0.5s ease;
+  /* Ensure there's always padding at the bottom for mobile browser UI */
+  padding-bottom: max(2rem, env(safe-area-inset-bottom, 2rem));
 }
 
 .game.your-action {
@@ -633,9 +649,15 @@ body {
 
 /* Your Hand Section */
 .your-hand {
-  flex: 1;
+  /* Remove flex: 1 - this caused issues on mobile where viewport calculations are unreliable */
+  /* Use explicit sizing to guarantee visibility */
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
+  /* Minimum height ensures the hand section always takes up space */
+  min-height: 200px;
+  /* Extra bottom padding for mobile safe area */
+  padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
 .your-hand h3 {
@@ -651,6 +673,10 @@ body {
   gap: 1.5rem;
   justify-content: center;
   flex-wrap: wrap;
+  /* Explicit minimum height for the cards area - ensures it takes space in layout */
+  min-height: 160px;
+  /* Ensure this area is always in the document flow */
+  position: relative;
 }
 
 .card-container {
@@ -1524,11 +1550,17 @@ body {
 
   .your-hand {
     flex: 0 0 auto;
+    /* Explicit minimum height on mobile - guaranteed visible */
+    min-height: 180px;
+    /* Add significant bottom margin to ensure scrollability past mobile browser UI */
+    margin-bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
   }
 
   .game {
     min-height: auto;
     height: auto;
+    /* Slightly more bottom padding on mobile */
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 1.5rem));
   }
 
   .other-players h3 {

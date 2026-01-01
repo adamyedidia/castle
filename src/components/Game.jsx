@@ -85,6 +85,9 @@ export default function Game({
   const [showGameResult, setShowGameResult] = useState(true);
   const [lastDuelCards, setLastDuelCards] = useState(null); // { challengerId, challengerCardIndex, defenderId, defenderCardIndex }
 
+  // Ref for the hand section - used to ensure visibility on mobile
+  const handRef = React.useRef(null);
+
   const myPlayer = gameState.players[playerId];
   const otherPlayers = Object.entries(gameState.players)
     .filter(([id]) => id !== playerId);
@@ -137,6 +140,21 @@ export default function Game({
       });
     }
   }, [duelResult]);
+
+  // Scroll hand into view when it's the player's turn or they need to respond
+  // This ensures mobile users can always see their cards when action is needed
+  useEffect(() => {
+    const needsAction = (gameState.currentTurnPlayerId === playerId && !gameState.duel) ||
+      (gameState.duel?.defenderId === playerId && gameState.duel?.waitingForDefender);
+
+    if (needsAction && handRef.current) {
+      // Small delay to let layout settle, then scroll hand into view
+      const timer = setTimeout(() => {
+        handRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [gameState.currentTurnPlayerId, gameState.duel, playerId]);
 
   const unrevealedIndices = privateState.unrevealedCardIndices || [];
 
@@ -466,7 +484,7 @@ export default function Game({
       </div>
 
       {/* Your Hand */}
-      <div className="your-hand">
+      <div className="your-hand" ref={handRef}>
         <div className="hand-cards">
           {privateState.cards.map((card, i) => {
             const revealed = isRevealed(i);
